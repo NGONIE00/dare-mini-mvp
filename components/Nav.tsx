@@ -42,11 +42,11 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
       const channel = supabase
         .channel("notifications")
         .on("postgres_changes", {
-          event: "INSERT", schema: "public", table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        }, payload => {
-          setNotifications(prev => [payload.new as Notification, ...prev]);
-        })
+            event: "INSERT", schema: "public", table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          }, (payload: { new: Notification }) => {
+            setNotifications(prev => [payload.new as Notification, ...prev]);
+          })
         .subscribe();
 
       return () => { supabase.removeChannel(channel); };
