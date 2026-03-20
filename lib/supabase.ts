@@ -5,7 +5,6 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-<<<<<<< HEAD
 // Types for our database
 export type Profile = {
   id: string
@@ -39,16 +38,36 @@ export type Message = {
   user_id: string
   message: string
   created_at: string
-=======
+}
+
+export type Wallet = {
+  id: string
+  user_id: string
+  balance: number
+  currency: string
+  updated_at: string
+}
+
+export type Transaction = {
+  id: string
+  from_user_id: string
+  to_user_id: string
+  room_id: string
+  amount: number
+  transaction_type: string
+  status: string
+  reference: string
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
-      profiles: { Row: { id: string; phone_hash: string; display_name: string; bio: string | null; user_type: 'listener' | 'host' | 'verified'; created_at: string } }
-      rooms: { Row: { id: string; host_id: string; title: string; description: string; category: string; language: string; scheduled_at: string; duration_minutes: number; capacity: number; is_ticketed: boolean; ticket_price: number; status: string; participant_count: number; created_at: string } }
-      messages: { Row: { id: string; room_id: string; user_id: string; message: string; created_at: string } }
-      wallets: { Row: { id: string; user_id: string; balance: number; currency: string; updated_at: string } }
-      transactions: { Row: { id: string; from_user_id: string; to_user_id: string; room_id: string; amount: number; transaction_type: string; status: string; reference: string; created_at: string } }
+      profiles: { Row: Profile }
+      rooms: { Row: Room }
+      messages: { Row: Message }
+      wallets: { Row: Wallet }
+      transactions: { Row: Transaction }
     }
   }
->>>>>>> e679db8bf36f6923f5d32db139f5e3a0ce4a852f
 }
