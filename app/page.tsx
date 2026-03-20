@@ -184,7 +184,49 @@ export default function Home() {
           <p style={{ ...body, maxWidth: 500, marginBottom: "1.75rem" }}>
             Dare is a digital-inclusive voice platform built for users with limited bandwidth, basic devices, and mobile-first access. No barriers. No compromises.
           </p>
-          <button style={btnP} onClick={() => router.push("/rooms")}>Try the demo →</button>
+          {/* CTA row — button left, definition pinned far right */}
+          <div style={{
+            display: "flex", alignItems: "flex-end",
+            justifyContent: "space-between", flexWrap: "wrap",
+            gap: "1.5rem", maxWidth: 760,
+          }}>
+            {/* Button unchanged */}
+            <button style={btnP} onClick={() => router.push("/rooms")}>Try the demo →</button>
+
+            {/* Shona etymology — far right */}
+            <div style={{
+              display: "flex", gap: "0.75rem", alignItems: "flex-start",
+              maxWidth: "clamp(200px, 35vw, 300px)",
+              borderLeft: "2px solid rgba(217,119,6,0.5)",
+              paddingLeft: "0.9rem",
+            }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: "50%",
+                border: "1.5px solid rgba(217,119,6,0.35)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, marginTop: 1,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginBottom: "0.3rem", flexWrap: "wrap" }}>
+                  <span style={{ color: "#D97706", fontSize: "clamp(0.85rem,1.8vw,0.95rem)", fontWeight: 700, fontFamily: "Georgia, serif", letterSpacing: "0.03em" }}>dare</span>
+                  <span style={{ color: "#737373", fontSize: "0.68rem", fontFamily: "sans-serif", fontStyle: "italic" }}>/daː.ɾe/ · Shona</span>
+                </div>
+                <p style={{ color: "#a3a3a3", fontSize: "clamp(0.7rem,1.4vw,0.76rem)", lineHeight: 1.7, fontFamily: "sans-serif", margin: "0 0 0.35rem" }}>
+                  A traditional gathering of community elders — to deliberate, resolve, and speak in council.
+                </p>
+                <p style={{ color: "rgba(217,119,6,0.65)", fontSize: "0.67rem", fontFamily: "sans-serif", fontStyle: "italic", margin: 0 }}>
+                  "Every voice deserves a seat at the dare."
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
