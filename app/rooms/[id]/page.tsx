@@ -134,7 +134,7 @@ export default function RoomPage() {
 
       /* join room if logged in */
       if (user) {
-        const already = parts?.find(p => p.user_id === user.id);
+        const already = parts?.find((p: Participant) => p.user_id === user.id);
         if (!already) {
           await supabase.from("room_participants").insert({ room_id: roomId, user_id: user.id, payment_status: "free" });
           await supabase.from("rooms").update({ participant_count: (roomData.participant_count ?? 0) + 1 }).eq("id", roomId);
