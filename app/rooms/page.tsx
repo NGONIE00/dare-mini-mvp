@@ -1,6 +1,5 @@
 "use client";
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -157,6 +156,21 @@ export default function Rooms() {
                     <span style={{ display: "inline-block", background: "var(--bg2)", color: "var(--text3)", border: "0.5px solid var(--border)", borderRadius: 100, padding: "1px 7px", fontSize: "0.65rem", fontFamily: "sans-serif", textTransform: "capitalize" }}>
                       {room.category}
                     </span>
+                  </div>
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); router.push(`/rooms/${room.id}`); }}
+                      style={{
+                        background: room.status === "live" ? "#D97706" : "transparent",
+                        color: room.status === "live" ? "#fff" : "var(--text2)",
+                        border: room.status === "live" ? "none" : "0.5px solid var(--border2)",
+                        borderRadius: 6, padding: "7px 18px", fontSize: "0.8rem",
+                        fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif",
+                        transition: "background 0.2s",
+                      }}
+                    >
+                      {room.status === "live" ? "Join now →" : room.status === "ended" ? "View recap" : "View room →"}
+                    </button>
                   </div>
                 </div>
               ))}

@@ -454,7 +454,7 @@ export default function RoomPage() {
               </div>
 
               {/* Raise hand — listener only */}
-              {!isHost && !ended && currentUser && (
+              {!isHost && !ended && currentUser && room?.status !== "ended" && (
                 <button onClick={toggleHand} style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   width: "100%", padding: "11px",
@@ -608,7 +608,7 @@ export default function RoomPage() {
               <div style={{ background: "var(--bg)", borderRadius: 12, border: "0.5px solid var(--border)", width: "100%", maxWidth: 340, padding: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                   <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Tip {room.profiles?.display_name}</span>
-                  <button onClick={() => setTipOpen(false); setTipStep("amount"); setTipPayment("");} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
+                  <button onClick={() => { setTipOpen(false); setTipStep("amount"); setTipPayment(""); }} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
                 </div>
                 {tipSent ? (
                   <div style={{ textAlign: "center", padding: "1.25rem 0" }}>
