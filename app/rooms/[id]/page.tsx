@@ -142,7 +142,7 @@ export default function RoomPage() {
 
         /* load follows */
         const { data: followData } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-        if (followData) setFollowing(new Set(followData.map(f => f.following_id)));
+        if (followData) setFollowing(new Set(followData.map((f: { following_id: string }) => f.following_id)));
       }
 
       setLoading(false);
