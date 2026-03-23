@@ -1,5 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -34,10 +35,11 @@ export default function Rooms() {
       const { data, error } = await supabase
         .from("rooms")
         .select("*, profiles(id, display_name)")
-        .in("status", ["scheduled", "live"])
-        .order("scheduled_at", { ascending: true });
+        .in("status", ["scheduled", "live", "ended"])
+        .order("scheduled_at", { ascending: false });
 
-      if (!error && data) setRooms(data);
+      if (error) console.error("Rooms fetch error:", error.message, error.code);
+      if (data) setRooms(data);
       setLoading(false);
     };
     fetchRooms();
