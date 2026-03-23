@@ -61,7 +61,6 @@ const Avatar = ({ id, name, url, size = 32 }: { id: string; name: string; url?: 
   </div>
 );
 
-const TIP_AMOUNTS = [0.5, 1, 2, 5];
 
 export default function RoomPage() {
   const router  = useRouter();
@@ -83,7 +82,9 @@ export default function RoomPage() {
   const [chatInput,     setChatInput]     = useState("");
   const [sending,       setSending]       = useState(false);
   const [tipOpen,       setTipOpen]       = useState(false);
-  const [tipAmount,     setTipAmount]     = useState(1);
+  const [tipAmount,     setTipAmount]     = useState("");
+  const [tipPayment,    setTipPayment]    = useState("");
+  const [tipStep,       setTipStep]       = useState<"amount"|"method"|"confirm">("amount");
   const [tipSent,       setTipSent]       = useState(false);
   const [tipLoading,    setTipLoading]    = useState(false);
   const [infoOpen,      setInfoOpen]      = useState(false);
@@ -236,20 +237,20 @@ export default function RoomPage() {
 
   /* ── tip ── */
   const sendTip = async () => {
-    if (!currentUser || !room || tipLoading) return;
+    if (!currentUser || !room || tipLoading || !tipAmount || !tipPayment) return;
     setTipLoading(true);
     await supabase.from("transactions").insert({
       from_user_id: currentUser,
       to_user_id: room.host_id,
       room_id: roomId,
-      amount: tipAmount,
+      amount: parseFloat(tipAmount),
       transaction_type: "tip",
       status: "completed",
       reference: `tip-${Date.now()}`,
     });
     setTipSent(true);
     setTipLoading(false);
-    setTimeout(() => { setTipOpen(false); setTipSent(false); }, 2000);
+    setTimeout(() => { setTipOpen(false); setTipSent(false); setTipAmount(""); setTipPayment(""); setTipStep("amount"); }, 3000);
   };
 
   /* ── follow from participant panel ── */
@@ -352,7 +353,7 @@ export default function RoomPage() {
           </div>
 
           {/* ── MAIN GRID ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(240px, 300px)", gap: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "1rem", alignItems: "start" }}>
 
             {/* ── LEFT: CHAT ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
@@ -607,37 +608,88 @@ export default function RoomPage() {
               <div style={{ background: "var(--bg)", borderRadius: 12, border: "0.5px solid var(--border)", width: "100%", maxWidth: 340, padding: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                   <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Tip {room.profiles?.display_name}</span>
-                  <button onClick={() => setTipOpen(false)} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
+                  <button onClick={() => setTipOpen(false); setTipStep("amount"); setTipPayment("");} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
                 </div>
                 {tipSent ? (
-                  <div style={{ textAlign: "center", padding: "1rem 0" }}>
-                    <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>✓</div>
-                    <p style={{ color: "#059669", fontFamily: "sans-serif", fontWeight: 600 }}>Tip sent!</p>
-                    <p style={{ color: "var(--text3)", fontSize: "0.78rem", fontFamily: "sans-serif", marginTop: 4 }}>USD ${tipAmount.toFixed(2)} sent to {room.profiles?.display_name}</p>
+                  <div style={{ textAlign: "center", padding: "1.25rem 0" }}>
+                    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(5,150,105,0.12)", border: "0.5px solid rgba(5,150,105,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <p style={{ color: "#059669", fontFamily: "sans-serif", fontWeight: 700, fontSize: "1rem", marginBottom: 4 }}>Tip sent!</p>
+                    <p style={{ color: "var(--text2)", fontSize: "0.82rem", fontFamily: "sans-serif", lineHeight: 1.6 }}>
+                      USD ${parseFloat(tipAmount || "0").toFixed(2)} to {room.profiles?.display_name}<br/>
+                      <span style={{ color: "var(--text3)" }}>via {tipPayment}</span>
+                    </p>
                   </div>
-                ) : (
+                ) : tipStep === "amount" ? (
                   <>
-                    <p style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1.25rem", lineHeight: 1.6 }}>
+                    <p style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1rem", lineHeight: 1.6 }}>
                       Support this creator directly. ~85% goes to them.
                     </p>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: "1.25rem" }}>
-                      {TIP_AMOUNTS.map(amt => (
-                        <button key={amt} onClick={() => setTipAmount(amt)} style={{
-                          padding: "10px 4px", borderRadius: 6, cursor: "pointer", fontFamily: "sans-serif",
-                          background: tipAmount === amt ? "rgba(217,119,6,0.12)" : "var(--bg2)",
-                          border: `0.5px solid ${tipAmount === amt ? "#D97706" : "var(--border2)"}`,
-                          color: tipAmount === amt ? "#D97706" : "var(--text2)",
-                          fontWeight: tipAmount === amt ? 700 : 400, fontSize: "0.85rem",
+                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.4rem" }}>
+                      Amount (USD)
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.25rem" }}>
+                      <span style={{ fontSize: "1rem", color: "var(--text3)", fontFamily: "sans-serif" }}>$</span>
+                      <input
+                        type="number" min="0.10" step="0.10"
+                        value={tipAmount}
+                        onChange={e => setTipAmount(e.target.value)}
+                        placeholder="Enter amount e.g. 2.50"
+                        style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "10px 12px", fontSize: "1rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none" }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => { if (parseFloat(tipAmount) > 0) setTipStep("method"); }}
+                      disabled={!tipAmount || parseFloat(tipAmount) <= 0}
+                      style={{ ...btnP, width: "100%", padding: "11px", opacity: !tipAmount || parseFloat(tipAmount) <= 0 ? 0.5 : 1 }}
+                    >
+                      Continue →
+                    </button>
+                  </>
+                ) : tipStep === "method" ? (
+                  <>
+                    <button onClick={() => setTipStep("amount")} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: "0.78rem", fontFamily: "sans-serif", cursor: "pointer", padding: "0 0 0.75rem", display: "block" }}>← Back</button>
+                    <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.25rem" }}>
+                      Sending USD ${parseFloat(tipAmount).toFixed(2)} to {room.profiles?.display_name}
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1.1rem" }}>Select payment method</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.25rem" }}>
+                      {[
+                        { id: "EcoCash",   label: "EcoCash",    desc: "Zimbabwe · *151#", color: "#D97706" },
+                        { id: "Mukuru",    label: "Mukuru",     desc: "Southern Africa",  color: "#059669" },
+                        { id: "OneMoney",  label: "OneMoney",   desc: "Zimbabwe · NetOne", color: "#3B82F6" },
+                        { id: "Telecash",  label: "Telecash",   desc: "Zimbabwe · Telecel", color: "#7C3AED" },
+                        { id: "Mpesa",     label: "M-Pesa",     desc: "East Africa",      color: "#059669" },
+                        { id: "MTN MoMo",  label: "MTN MoMo",   desc: "West/Southern Africa", color: "#F59E0B" },
+                      ].map(m => (
+                        <button key={m.id} onClick={() => setTipPayment(m.id)} style={{
+                          display: "flex", alignItems: "center", gap: 12,
+                          padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                          background: tipPayment === m.id ? "rgba(217,119,6,0.08)" : "var(--bg2)",
+                          border: `0.5px solid ${tipPayment === m.id ? "#D97706" : "var(--border)"}`,
+                          transition: "all 0.15s", textAlign: "left" as const,
                         }}>
-                          ${amt}
+                          <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: "0.88rem", fontWeight: 600, color: tipPayment === m.id ? "#D97706" : "var(--text)", fontFamily: "sans-serif" }}>{m.label}</div>
+                            <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{m.desc}</div>
+                          </div>
+                          {tipPayment === m.id && (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ marginLeft: "auto" }}><polyline points="20 6 9 17 4 12"/></svg>
+                          )}
                         </button>
                       ))}
                     </div>
-                    <button onClick={sendTip} disabled={tipLoading} style={{ ...btnP, width: "100%", padding: "11px" }}>
-                      {tipLoading ? "Sending..." : `Send $${tipAmount.toFixed(2)} tip`}
+                    <button
+                      onClick={sendTip}
+                      disabled={!tipPayment || tipLoading}
+                      style={{ ...btnP, width: "100%", padding: "11px", opacity: !tipPayment ? 0.5 : 1 }}
+                    >
+                      {tipLoading ? "Processing..." : `Send $${parseFloat(tipAmount).toFixed(2)} via ${tipPayment || "..."}`}
                     </button>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           )}
