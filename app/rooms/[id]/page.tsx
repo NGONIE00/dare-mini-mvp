@@ -319,14 +319,10 @@ export default function RoomPage() {
 
               {/* Header actions */}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <button onClick={() => setInfoOpen(v => !v)} style={{ ...btnGhost, padding: "6px 12px", fontSize: "0.76rem" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: "middle", marginRight: 4 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  Info
-                </button>
-                <button onClick={() => setParticipantOpen(v => !v)} style={{ ...btnGhost, padding: "6px 12px", fontSize: "0.76rem" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: "middle", marginRight: 4 }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  {participants.length}
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "0.5px solid var(--border)", borderRadius: 6, padding: "6px 12px", fontSize: "0.76rem", color: "var(--text2)", fontFamily: "sans-serif" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  {participants.length} in room
+                </div>
                 {!isHost && !ended && (
                   <button onClick={() => setTipOpen(v => !v)} style={{ ...btnP, padding: "6px 12px", fontSize: "0.76rem" }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: "middle", marginRight: 4 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -471,111 +467,106 @@ export default function RoomPage() {
               )}
             </div>
 
-            {/* ── RIGHT SIDEBAR ── */}
+            {/* ── RIGHT SIDEBAR — always visible ── */}
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
-              {/* Room info panel */}
-              {infoOpen && (
-                <div style={panel}>
-                  <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)" }}>
-                    <span style={secLabel}>Room info</span>
-                  </div>
-                  <div style={{ padding: "0.75rem 1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                    {[
-                      { label: "Category",    value: room.category,       cap: true },
-                      { label: "Language",    value: room.language,       cap: true },
-                      { label: "Date",        value: formatDate(room.scheduled_at) },
-                      { label: "Time",        value: formatTime(room.scheduled_at) },
-                      { label: "Duration",    value: room.duration_minutes ? `${room.duration_minutes} min` : "Open-ended" },
-                      { label: "Ticket",      value: room.is_ticketed ? `USD $${room.ticket_price.toFixed(2)}` : "Free" },
-                    ].map(item => (
-                      <div key={item.label}>
-                        <div style={{ fontSize: "0.62rem", fontWeight: 600, color: "var(--text3)", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: 2 }}>{item.label}</div>
-                        <div style={{ fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif", textTransform: item.cap ? "capitalize" : "none" }}>{item.value}</div>
-                      </div>
-                    ))}
-                    {room.description && (
-                      <div>
-                        <div style={{ fontSize: "0.62rem", fontWeight: 600, color: "var(--text3)", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: 2 }}>About</div>
-                        <div style={{ fontSize: "0.82rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.6 }}>{room.description}</div>
-                      </div>
-                    )}
-                  </div>
+              {/* Room info — always shown */}
+              <div style={panel}>
+                <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)" }}>
+                  <span style={secLabel}>Room info</span>
                 </div>
-              )}
+                <div style={{ padding: "0.75rem 1rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  {[
+                    { label: "Category",  value: room.category,       cap: true },
+                    { label: "Language",  value: room.language,       cap: true },
+                    { label: "Date",      value: formatDate(room.scheduled_at) },
+                    { label: "Time",      value: formatTime(room.scheduled_at) },
+                    { label: "Duration",  value: room.duration_minutes ? `${room.duration_minutes} min` : "Open-ended" },
+                    { label: "Ticket",    value: room.is_ticketed ? `USD $${room.ticket_price.toFixed(2)}` : "Free" },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <div style={{ fontSize: "0.6rem", fontWeight: 600, color: "var(--text3)", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: 2 }}>{item.label}</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text)", fontFamily: "sans-serif", textTransform: item.cap ? "capitalize" : "none" }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+                {room.description && (
+                  <div style={{ padding: "0 1rem 0.75rem" }}>
+                    <div style={{ fontSize: "0.6rem", fontWeight: 600, color: "var(--text3)", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: 4 }}>About</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.6 }}>{room.description}</div>
+                  </div>
+                )}
+              </div>
 
-              {/* Participant list */}
-              {participantOpen && (
-                <div style={panel}>
-                  <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)" }}>
-                    <span style={secLabel}>In this room</span>
-                  </div>
-                  <div style={{ maxHeight: 320, overflowY: "auto" }}>
-                    {participants.map(p => {
-                      const prof = p.profiles;
-                      if (!prof) return null;
-                      const isCurrentUser = p.user_id === currentUser;
-                      const isRoomHost = p.user_id === room.host_id;
-                      const isFollowed = following.has(p.user_id);
-                      return (
-                        <div key={p.id} style={{ padding: "0.65rem 1rem", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", flex: 1, minWidth: 0 }} onClick={() => setSelectedUser(selectedUser?.user_id === p.user_id ? null : p)}>
-                            <Avatar id={prof.id} name={prof.display_name} url={prof.avatar_url} size={28} />
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prof.display_name}</div>
-                              {isRoomHost && <div style={{ fontSize: "0.62rem", color: "#D97706", fontFamily: "sans-serif" }}>Host</div>}
+              {/* Participants — avatar grid */}
+              <div style={panel}>
+                <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={secLabel}>In this room</span>
+                  <span style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{participants.length}</span>
+                </div>
+                {/* Avatar grid */}
+                <div style={{ padding: "0.75rem 1rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(52px, 1fr))", gap: "0.6rem" }}>
+                  {participants.map(p => {
+                    const prof = p.profiles;
+                    if (!prof) return null;
+                    const isRoomHost = p.user_id === room.host_id;
+                    const isSelected = selectedUser?.user_id === p.user_id;
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => setSelectedUser(isSelected ? null : p)}
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", opacity: 1 }}
+                        title={prof.display_name}
+                      >
+                        <div style={{ position: "relative" }}>
+                          <Avatar id={prof.id} name={prof.display_name} url={prof.avatar_url} size={40} />
+                          {isRoomHost && (
+                            <div style={{ position: "absolute", bottom: -2, right: -2, width: 14, height: 14, borderRadius: "50%", background: "#D97706", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg width="7" height="7" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                             </div>
-                          </div>
-                          <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                            {!isCurrentUser && !isRoomHost && (
-                              <button onClick={() => toggleFollow(p.user_id)} style={{
-                                background: isFollowed ? "transparent" : "rgba(217,119,6,0.1)",
-                                border: `0.5px solid ${isFollowed ? "var(--border2)" : "#D97706"}`,
-                                borderRadius: 4, padding: "3px 8px", fontSize: "0.68rem",
-                                cursor: "pointer", fontFamily: "sans-serif",
-                                color: isFollowed ? "var(--text3)" : "#D97706",
-                                fontWeight: 600, transition: "all 0.15s",
-                              }}>
-                                {isFollowed ? "Following" : "+ Follow"}
-                              </button>
-                            )}
-                            {isHost && !isCurrentUser && (
-                              <button onClick={() => toggleMute(p.user_id)} style={{
-                                background: mutedUsers.has(p.user_id) ? "rgba(239,68,68,0.1)" : "var(--bg2)",
-                                border: `0.5px solid ${mutedUsers.has(p.user_id) ? "rgba(239,68,68,0.3)" : "var(--border)"}`,
-                                borderRadius: 4, padding: "3px 8px", fontSize: "0.68rem",
-                                cursor: "pointer", fontFamily: "sans-serif",
-                                color: mutedUsers.has(p.user_id) ? "#EF4444" : "var(--text3)",
-                              }}>
-                                {mutedUsers.has(p.user_id) ? "Muted" : "Mute"}
-                              </button>
-                            )}
-                          </div>
+                          )}
+                          {isSelected && (
+                            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px solid #D97706" }} />
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                  {/* Mini profile card on tap */}
-                  {selectedUser?.profiles && (
-                    <div style={{ padding: "0.75rem 1rem", borderTop: "0.5px solid var(--border)", background: "var(--bg2)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.5rem" }}>
-                        <Avatar id={selectedUser.profiles.id} name={selectedUser.profiles.display_name} url={selectedUser.profiles.avatar_url} size={36} />
-                        <div>
-                          <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{selectedUser.profiles.display_name}</div>
-                        </div>
+                        <span style={{ fontSize: "0.6rem", color: "var(--text2)", fontFamily: "sans-serif", textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {prof.display_name.split(" ")[0]}
+                        </span>
                       </div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => router.push(`/profile/${selectedUser.profiles!.id}`)} style={{ ...btnGhost, flex: 1, padding: "6px", fontSize: "0.75rem", textAlign: "center" as const }}>View profile</button>
-                        {selectedUser.user_id !== currentUser && (
-                          <button onClick={() => toggleFollow(selectedUser.user_id)} style={{ ...btnP, flex: 1, padding: "6px", fontSize: "0.75rem" }}>
-                            {following.has(selectedUser.user_id) ? "Following ✓" : "+ Follow"}
-                          </button>
-                        )}
+                    );
+                  })}
+                </div>
+
+                {/* Selected participant card */}
+                {selectedUser?.profiles && (
+                  <div style={{ padding: "0.75rem 1rem", borderTop: "0.5px solid var(--border)", background: "var(--bg2)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.6rem" }}>
+                      <Avatar id={selectedUser.profiles.id} name={selectedUser.profiles.display_name} url={selectedUser.profiles.avatar_url} size={36} />
+                      <div>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{selectedUser.profiles.display_name}</div>
+                        {selectedUser.user_id === room.host_id && <div style={{ fontSize: "0.65rem", color: "#D97706", fontFamily: "sans-serif" }}>Host</div>}
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => router.push(`/profile/${selectedUser.profiles!.id}`)} style={{ ...btnGhost, flex: 1, padding: "6px", fontSize: "0.75rem", textAlign: "center" as const }}>Profile</button>
+                      {selectedUser.user_id !== currentUser && selectedUser.user_id !== room.host_id && (
+                        <button onClick={() => toggleFollow(selectedUser.user_id)} style={{ ...btnP, flex: 1, padding: "6px", fontSize: "0.75rem" }}>
+                          {following.has(selectedUser.user_id) ? "Following ✓" : "+ Follow"}
+                        </button>
+                      )}
+                      {isHost && selectedUser.user_id !== currentUser && (
+                        <button onClick={() => toggleMute(selectedUser.user_id)} style={{
+                          flex: 1, padding: "6px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", borderRadius: 6, border: "none",
+                          background: mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.1)" : "var(--bg3)",
+                          color: mutedUsers.has(selectedUser.user_id) ? "#EF4444" : "var(--text2)",
+                        }}>
+                          {mutedUsers.has(selectedUser.user_id) ? "Unmute" : "Mute"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Host control panel */}
               {isHost && !ended && (
@@ -588,11 +579,8 @@ export default function RoomPage() {
                       {handQueue.length > 0 ? `${handQueue.length} hand${handQueue.length > 1 ? "s" : ""} raised` : "No hands raised"}
                     </div>
                     <div style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>
-                      {mutedUsers.size > 0 ? `${mutedUsers.size} participant${mutedUsers.size > 1 ? "s" : ""} muted` : "All participants unmuted"}
+                      {mutedUsers.size > 0 ? `${mutedUsers.size} muted` : "All unmuted"}
                     </div>
-                    <button onClick={() => { setParticipantOpen(true); }} style={{ ...btnGhost, width: "100%", padding: "7px", fontSize: "0.78rem", textAlign: "center" as const }}>
-                      Manage participants
-                    </button>
                     <button onClick={endRoom} disabled={ending} style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "0.5px solid rgba(239,68,68,0.25)", borderRadius: 6, padding: "7px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif", width: "100%" }}>
                       {ending ? "Ending..." : "End room for everyone"}
                     </button>
