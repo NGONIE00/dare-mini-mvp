@@ -499,9 +499,8 @@ export default function RoomPage() {
               <Av id={room.profiles?.id ?? ""} name={room.profiles?.display_name ?? "Host"} url={room.profiles?.avatar_url} size={40} speaking={room.status === "live"} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: "0.75rem", color: "#D97706", fontFamily: "sans-serif", fontWeight: 700, marginBottom: 1 }}>HOST</div>
-                <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}
+                <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, cursor: "pointer" }}
                   onClick={() => room.profiles?.id && router.push(`/profile/${room.profiles.id}`)}
-                  style2={{ cursor: "pointer" }}
                 >
                   {room.profiles?.display_name ?? "Unknown"}
                 </div>
