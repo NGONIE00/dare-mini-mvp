@@ -31,17 +31,36 @@ export default function Rooms() {
 
   useEffect(() => {
     const fetchRooms = async () => {
+      /* Sync room statuses first (scheduled→live, live→ended) */
+      await supabase.rpc("sync_room_statuses");
+
       const { data, error } = await supabase
         .from("rooms")
         .select("*, profiles(id, display_name)")
-        .in("status", ["scheduled", "live", "ended"])
-        .order("scheduled_at", { ascending: false });
+        .in("status", ["scheduled", "live"])
+        .order("scheduled_at", { ascending: true });
 
       if (error) console.error("Rooms fetch error:", error.message, error.code);
       if (data) setRooms(data);
       setLoading(false);
     };
     fetchRooms();
+
+    /* Realtime: update room cards when status or participant_count changes */
+    const channel = supabase
+      .channel("rooms-list")
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "rooms",
+      }, (payload: { new: Room & { host_id: string } }) => {
+        setRooms(prev => prev.map(r =>
+          r.id === payload.new.id
+            ? { ...r, status: payload.new.status, participant_count: payload.new.participant_count }
+            : r
+        ));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const filtered = filter === "All"

@@ -233,18 +233,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
-      <section style={{ ...sec, textAlign: "center" as const }}>
-        <div style={inner}>
-          <h2 style={{ ...h2, marginBottom: "0.5rem" }}>Ready to join the dare?</h2>
-          <p style={{ ...body, marginBottom: "1.5rem" }}>Create your account with your phone number. No email, no app store.</p>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" as const }}>
-            <button style={btnP} onClick={() => router.push("/register")}>Get started — it's free</button>
-            <button style={btnG} onClick={() => router.push("/demo")}>View demo accounts →</button>
-          </div>
-        </div>
-      </section>
-
       {/* ── FOOTER ── */}
       <footer style={{ background: "var(--bg)", borderTop: "1px solid var(--divider)", padding: "2.25rem 2rem 1.5rem" }}>
         <div style={inner}>

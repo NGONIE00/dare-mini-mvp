@@ -116,6 +116,9 @@ export default function RoomPage() {
         const { data: prof } = await supabase.from("profiles").select("display_name,avatar_url").eq("id", user.id).single();
         if (prof) setCurrentName(prof.display_name);
       }
+      /* Sync room status before loading */
+      await supabase.rpc("sync_room_statuses");
+
       const { data: roomData } = await supabase.from("rooms")
         .select("*, profiles(id,display_name,avatar_url)").eq("id", roomId).single();
       if (!roomData) { router.push("/rooms"); return; }
@@ -134,7 +137,7 @@ export default function RoomPage() {
         const already = parts?.find((p: Participant) => p.user_id === user.id);
         if (!already) {
           await supabase.from("room_participants").insert({ room_id: roomId, user_id: user.id, payment_status: "free" });
-          await supabase.from("rooms").update({ participant_count: (roomData.participant_count ?? 0) + 1 }).eq("id", roomId);
+          /* trigger sync_participant_count fires automatically */
         }
         const { data: fol } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
         if (fol) setFollowing(new Set(fol.map((f: { following_id: string }) => f.following_id)));
@@ -161,7 +164,54 @@ export default function RoomPage() {
         setHandQueue(prev => prev.filter(h => h.user_id !== payload.user_id));
       })
       .subscribe();
-    return () => { supabase.removeChannel(msgCh); supabase.removeChannel(handCh); };
+    /* Realtime: room status + participant count */
+    const roomCh = supabase
+      .channel(`room-meta-${roomId}`)
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "rooms",
+        filter: `id=eq.${roomId}`,
+      }, (payload: { new: { status: string; participant_count: number } }) => {
+        setRoom(prev => prev ? {
+          ...prev,
+          status: payload.new.status,
+          participant_count: payload.new.participant_count,
+        } : prev);
+        if (payload.new.status === "ended") setEnded(true);
+      })
+      .subscribe();
+
+    /* Realtime: participant joins/leaves */
+    const partCh = supabase
+      .channel(`room-parts-${roomId}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "room_participants",
+        filter: `room_id=eq.${roomId}`,
+      }, async (payload: { new: { user_id: string } }) => {
+        const { data: prof } = await supabase
+          .from("profiles").select("id,display_name,avatar_url")
+          .eq("id", payload.new.user_id).single();
+        if (prof) {
+          setParticipants(prev =>
+            prev.find(p => p.user_id === payload.new.user_id)
+              ? prev
+              : [...prev, { id: payload.new.user_id, user_id: payload.new.user_id, joined_at: new Date().toISOString(), profiles: prof }]
+          );
+        }
+      })
+      .on("postgres_changes", {
+        event: "DELETE", schema: "public", table: "room_participants",
+        filter: `room_id=eq.${roomId}`,
+      }, (payload: { old: { user_id: string } }) => {
+        setParticipants(prev => prev.filter(p => p.user_id !== payload.old.user_id));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(msgCh);
+      supabase.removeChannel(handCh);
+      supabase.removeChannel(roomCh);
+      supabase.removeChannel(partCh);
+    };
   }, [roomId]);
 
   useEffect(() => {
@@ -209,7 +259,11 @@ export default function RoomPage() {
   };
 
   const leaveRoom = async () => {
-    if (currentUser) await supabase.from("room_participants").delete().eq("room_id", roomId).eq("user_id", currentUser);
+    if (currentUser) {
+      await supabase.from("room_participants").delete()
+        .eq("room_id", roomId).eq("user_id", currentUser);
+      /* trigger sync_participant_count fires automatically */
+    }
     router.push("/rooms");
   };
 
