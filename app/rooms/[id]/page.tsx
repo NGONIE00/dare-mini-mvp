@@ -311,59 +311,68 @@ export default function RoomPage() {
   );
 
   /* ── BOTTOM ACTION BAR ── */
+  /* BottomBar:
+     - Mobile (compact): Raise Hand | Chat | [spacer] | Tip (always shown, redirects to login if needed)
+       Leave is removed from mobile — only accessible via nav
+     - Desktop: same but Leave shown on right since there is more space
+  */
   const BottomBar = ({ compact = false }: { compact?: boolean }) => (
     <div style={{
       display: "flex", alignItems: "center", gap: compact ? 6 : 8,
-      padding: compact ? "0.6rem 0.75rem" : "0.85rem 1.25rem",
+      padding: compact ? "0.75rem 1rem" : "0.85rem 1.25rem",
       borderTop: "1px solid var(--divider)",
       background: "var(--bg)",
     }}>
-      {/* Raise hand */}
+      {/* Raise hand — only when signed in + not host + not ended */}
       {!isHost && !ended && currentUser && (
         <button onClick={toggleHand} style={{
           display: "flex", alignItems: "center", gap: 6,
-          padding: compact ? "8px 12px" : "10px 16px",
+          padding: compact ? "9px 14px" : "10px 16px",
           borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
-          fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 600,
+          fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 600,
           background: myHandRaised ? "rgba(217,119,6,0.1)" : "var(--bg2)",
           border: `1.5px solid ${myHandRaised ? "#D97706" : "var(--border2)"}`,
           color: myHandRaised ? "#D97706" : "var(--text2)",
           transition: "all 0.2s", flexShrink: 0,
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a6 6 0 0 0 12 0v-3a2 2 0 0 0-4 0v0"/></svg>
-          {myHandRaised ? "Lower" : "Raise Hand"}
+          {myHandRaised ? "Lower Hand" : "Raise Hand"}
         </button>
       )}
 
-      {/* Chat toggle (shows on both mobile + desktop) */}
+      {/* Chat toggle */}
       <button onClick={() => setChatOpen(v => !v)} style={{
         display: "flex", alignItems: "center", gap: 6,
-        padding: compact ? "8px 12px" : "10px 16px",
+        padding: compact ? "9px 14px" : "10px 16px",
         borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
-        fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 600,
+        fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 600,
         background: chatOpen ? "rgba(217,119,6,0.1)" : "var(--bg2)",
         border: `1.5px solid ${chatOpen ? "#D97706" : "var(--border2)"}`,
         color: chatOpen ? "#D97706" : "var(--text2)",
         transition: "all 0.2s", flexShrink: 0,
       }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Chat {messages.length > 0 && messages.length}
+        Chat {messages.length > 0 ? messages.length : ""}
       </button>
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Tip */}
-      {!isHost && !ended && currentUser && (
-        <button onClick={() => setTipOpen(true)} style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: compact ? "8px 14px" : "10px 18px",
-          borderRadius: 24, border: "none", cursor: "pointer", fontFamily: "sans-serif",
-          fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 700,
-          background: "#D97706", color: "#fff",
-          boxShadow: "0 2px 10px rgba(217,119,6,0.35)",
-          flexShrink: 0,
-        }}>
+      {/* Tip — always visible when room is not ended and user is not host.
+          If not signed in, redirect to register. */}
+      {!isHost && !ended && (
+        <button
+          onClick={() => currentUser ? setTipOpen(true) : router.push("/register")}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: compact ? "9px 16px" : "10px 18px",
+            borderRadius: 24, border: "none", cursor: "pointer", fontFamily: "sans-serif",
+            fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 700,
+            background: "#D97706", color: "#fff",
+            boxShadow: "0 2px 10px rgba(217,119,6,0.3)",
+            flexShrink: 0,
+          }}
+        >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           Tip
         </button>
@@ -372,8 +381,8 @@ export default function RoomPage() {
       {/* Host: end room */}
       {isHost && !ended && (
         <button onClick={endRoom} disabled={ending} style={{
-          padding: compact ? "8px 14px" : "10px 18px", borderRadius: 24, fontFamily: "sans-serif",
-          fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 700, cursor: "pointer",
+          padding: compact ? "9px 16px" : "10px 18px", borderRadius: 24, fontFamily: "sans-serif",
+          fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 700, cursor: "pointer",
           background: "rgba(239,68,68,0.1)", color: "#EF4444",
           border: "1.5px solid rgba(239,68,68,0.3)", flexShrink: 0,
         }}>
@@ -381,18 +390,19 @@ export default function RoomPage() {
         </button>
       )}
 
-      {/* Leave */}
-      <button onClick={leaveRoom} style={{
-        display: "flex", alignItems: "center", gap: 6,
-        padding: compact ? "8px 12px" : "10px 16px",
-        borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
-        fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 600,
-        background: "var(--bg2)", border: "1.5px solid var(--border2)", color: "var(--text2)",
-        flexShrink: 0,
-      }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Leave
-      </button>
+      {/* Leave — desktop only, hidden on mobile */}
+      {!compact && (
+        <button onClick={leaveRoom} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "10px 16px", borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
+          fontSize: "0.85rem", fontWeight: 600,
+          background: "var(--bg2)", border: "1.5px solid var(--border2)", color: "var(--text2)",
+          flexShrink: 0,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Leave
+        </button>
+      )}
     </div>
   );
 
@@ -427,6 +437,13 @@ export default function RoomPage() {
               {room.title}
             </span>
           </div>
+          {/* Leave — mobile nav only, hidden on desktop */}
+          <button onClick={leaveRoom} className="mobile-leave" style={{
+            background: "none", border: "none", cursor: "pointer", color: "var(--text2)",
+            fontSize: "0.85rem", fontFamily: "sans-serif", fontWeight: 600, flexShrink: 0, padding: 0,
+          }}>
+            Leave
+          </button>
         </nav>
 
         {/* ── BODY ── */}
@@ -736,8 +753,10 @@ export default function RoomPage() {
         @keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
         @keyframes wave { 0%{transform:scaleY(0.4)} 100%{transform:scaleY(1)} }
         .chat-sidebar { display: flex !important; }
+        .mobile-leave { display: none !important; }
         @media (max-width: 720px) {
           .chat-sidebar { display: none !important; }
+          .mobile-leave { display: block !important; }
         }
         * { -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
