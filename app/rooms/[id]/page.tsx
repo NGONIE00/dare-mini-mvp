@@ -390,19 +390,7 @@ export default function RoomPage() {
         </button>
       )}
 
-      {/* Leave — desktop only, hidden on mobile */}
-      {!compact && (
-        <button onClick={leaveRoom} style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "10px 16px", borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
-          fontSize: "0.85rem", fontWeight: 600,
-          background: "var(--bg2)", border: "1.5px solid var(--border2)", color: "var(--text2)",
-          flexShrink: 0,
-        }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Leave
-        </button>
-      )}
+
     </div>
   );
 
@@ -437,13 +425,7 @@ export default function RoomPage() {
               {room.title}
             </span>
           </div>
-          {/* Leave — mobile nav only, hidden on desktop */}
-          <button onClick={leaveRoom} className="mobile-leave" style={{
-            background: "none", border: "none", cursor: "pointer", color: "var(--text2)",
-            fontSize: "0.85rem", fontFamily: "sans-serif", fontWeight: 600, flexShrink: 0, padding: 0,
-          }}>
-            Leave
-          </button>
+
         </nav>
 
         {/* ── BODY ── */}
@@ -462,7 +444,8 @@ export default function RoomPage() {
             {/* ── HOST HERO ── */}
             <div style={{ padding: "2rem 1.5rem 1.25rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               {/* Big host avatar */}
-              <div style={{ position: "relative", marginBottom: "1rem" }}>
+              <div style={{ position: "relative", marginBottom: "1rem", cursor: "pointer" }}
+                onClick={() => hostProf?.id && router.push(`/profile/${hostProf.id}`)}>
                 <div style={{
                   width: 110, height: 110, borderRadius: "50%", overflow: "hidden",
                   background: AVATAR_COLOR(hostProf?.id ?? "host"),
@@ -495,7 +478,9 @@ export default function RoomPage() {
               </div>
 
               {/* Host name */}
-              <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", margin: "0 0 0.25rem", fontFamily: "sans-serif", letterSpacing: "-0.02em" }}>
+              <h1
+                onClick={() => hostProf?.id && router.push(`/profile/${hostProf.id}`)}
+                style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", margin: "0 0 0.25rem", fontFamily: "sans-serif", letterSpacing: "-0.02em", cursor: "pointer" }}>
                 {hostProf?.display_name ?? "Host"}
               </h1>
 
