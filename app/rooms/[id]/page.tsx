@@ -33,28 +33,29 @@ const AVATAR_COLOR = (id: string) => {
   return c[Math.abs(h) % c.length];
 };
 
-const fmtTime = (d: string) => new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const fmtTime = (d: string) =>
+  new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 const PAYMENT_METHODS = [
-  { id: "EcoCash",  label: "EcoCash",  desc: "*151#",               color: "#D97706" },
-  { id: "Mukuru",   label: "Mukuru",   desc: "Southern Africa",     color: "#059669" },
-  { id: "OneMoney", label: "OneMoney", desc: "NetOne Zimbabwe",     color: "#3B82F6" },
-  { id: "Telecash", label: "Telecash", desc: "Telecel Zimbabwe",    color: "#7C3AED" },
-  { id: "M-Pesa",   label: "M-Pesa",   desc: "East Africa",         color: "#22C55E" },
-  { id: "MTN MoMo", label: "MTN MoMo", desc: "West & South Africa", color: "#F59E0B" },
+  { id: "EcoCash",  label: "EcoCash",  desc: "*151# · Zimbabwe",       color: "#D97706" },
+  { id: "Mukuru",   label: "Mukuru",   desc: "Southern Africa",         color: "#059669" },
+  { id: "OneMoney", label: "OneMoney", desc: "NetOne · Zimbabwe",       color: "#3B82F6" },
+  { id: "Telecash", label: "Telecash", desc: "Telecel · Zimbabwe",      color: "#7C3AED" },
+  { id: "M-Pesa",   label: "M-Pesa",   desc: "East Africa",             color: "#22C55E" },
+  { id: "MTN MoMo", label: "MTN MoMo", desc: "West & Southern Africa",  color: "#F59E0B" },
 ];
 
-/* ── Avatar component ── */
-const Av = ({ id, name, url, size = 40, ring = false, speaking = false }:
-  { id: string; name: string; url?: string | null; size?: number; ring?: boolean; speaking?: boolean }) => (
+/* ── Avatar ── */
+const Av = ({
+  id, name, url, size = 40, border = false, speaking = false,
+}: { id: string; name: string; url?: string | null; size?: number; border?: boolean; speaking?: boolean }) => (
   <div style={{
     width: size, height: size, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
-    background: AVATAR_COLOR(id),
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: size * 0.32, fontWeight: 700, color: "#fff", fontFamily: "sans-serif",
-    border: speaking ? "2.5px solid #059669" : ring ? "2px solid #D97706" : "none",
-    transition: "border 0.2s",
+    background: AVATAR_COLOR(id), display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: size * 0.33, fontWeight: 700, color: "#fff", fontFamily: "sans-serif",
+    border: speaking ? `3px solid #059669` : border ? `2.5px solid #D97706` : "none",
+    boxShadow: speaking ? "0 0 0 4px rgba(5,150,105,0.15)" : "none",
+    transition: "box-shadow 0.3s, border 0.3s",
   }}>
     {url
       ? <img src={url} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -62,38 +63,46 @@ const Av = ({ id, name, url, size = 40, ring = false, speaking = false }:
   </div>
 );
 
+/* ── Speaking wave icon ── */
+const SpeakingWave = () => (
+  <svg width="20" height="16" viewBox="0 0 20 16" fill="none" style={{ marginLeft: 2 }}>
+    {[0,1,2,3,4].map((i) => (
+      <rect key={i} x={i * 4} y={0} width="2.5" height="16" rx="1.25" fill="#059669"
+        style={{ animation: `wave 1s ease-in-out ${i * 0.1}s infinite`, transformOrigin: "center" }}
+      />
+    ))}
+  </svg>
+);
+
 export default function RoomPage() {
   const router  = useRouter();
   const params  = useParams();
   const roomId  = params.id as string;
 
-  /* ── state ── */
   const [room,         setRoom]         = useState<Room | null>(null);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [handQueue,    setHandQueue]    = useState<HandRaise[]>([]);
   const [currentUser,  setCurrentUser]  = useState<string | null>(null);
   const [currentName,  setCurrentName]  = useState("You");
-  const [currentAvUrl, setCurrentAvUrl] = useState<string | null>(null);
   const [isHost,       setIsHost]       = useState(false);
   const [myHandRaised, setMyHandRaised] = useState(false);
   const [following,    setFollowing]    = useState<Set<string>>(new Set());
   const [mutedUsers,   setMutedUsers]   = useState<Set<string>>(new Set());
-  const [selectedUser, setSelectedUser] = useState<Participant | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [ended,        setEnded]        = useState(false);
   const [ending,       setEnding]       = useState(false);
   const [chatInput,    setChatInput]    = useState("");
   const [sending,      setSending]      = useState(false);
+  const [chatOpen,     setChatOpen]     = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Participant | null>(null);
   /* tip */
-  const [tipOpen,      setTipOpen]      = useState(false);
-  const [tipAmount,    setTipAmount]    = useState("");
-  const [tipPayment,   setTipPayment]   = useState("");
-  const [tipStep,      setTipStep]      = useState<"amount"|"method">("amount");
-  const [tipSent,      setTipSent]      = useState(false);
-  const [tipLoading,   setTipLoading]   = useState(false);
-  /* mobile panel */
-  const [mobilePanel,  setMobilePanel]  = useState<null|"chat"|"info"|"people">(null);
+  const [tipOpen,    setTipOpen]    = useState(false);
+  const [tipAmount,  setTipAmount]  = useState("");
+  const [tipPayment, setTipPayment] = useState("");
+  const [tipStep,    setTipStep]    = useState<"amount"|"method">("amount");
+  const [tipSent,    setTipSent]    = useState(false);
+  const [tipLoading, setTipLoading] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLInputElement>(null);
@@ -105,16 +114,19 @@ export default function RoomPage() {
       if (user) {
         setCurrentUser(user.id);
         const { data: prof } = await supabase.from("profiles").select("display_name,avatar_url").eq("id", user.id).single();
-        if (prof) { setCurrentName(prof.display_name); setCurrentAvUrl(prof.avatar_url); }
+        if (prof) setCurrentName(prof.display_name);
       }
-      const { data: roomData } = await supabase.from("rooms").select("*, profiles(id,display_name,avatar_url)").eq("id", roomId).single();
+      const { data: roomData } = await supabase.from("rooms")
+        .select("*, profiles(id,display_name,avatar_url)").eq("id", roomId).single();
       if (!roomData) { router.push("/rooms"); return; }
       setRoom(roomData);
       setIsHost(user?.id === roomData.host_id);
       if (roomData.status === "ended") setEnded(true);
       const [{ data: msgs }, { data: parts }] = await Promise.all([
-        supabase.from("messages").select("*, profiles(display_name,avatar_url)").eq("room_id", roomId).order("created_at", { ascending: true }).limit(100),
-        supabase.from("room_participants").select("*, profiles(id,display_name,avatar_url)").eq("room_id", roomId),
+        supabase.from("messages").select("*, profiles(display_name,avatar_url)")
+          .eq("room_id", roomId).order("created_at", { ascending: true }).limit(100),
+        supabase.from("room_participants").select("*, profiles(id,display_name,avatar_url)")
+          .eq("room_id", roomId),
       ]);
       if (msgs)  setMessages(msgs);
       if (parts) setParticipants(parts);
@@ -152,15 +164,15 @@ export default function RoomPage() {
     return () => { supabase.removeChannel(msgCh); supabase.removeChannel(handCh); };
   }, [roomId]);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-  useEffect(() => { document.body.style.overflow = (tipOpen || mobilePanel !== null) ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [tipOpen, mobilePanel]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   /* ── actions ── */
   const sendMessage = async () => {
     if (!chatInput.trim() || !currentUser || sending) return;
     setSending(true);
-    const text = chatInput.trim();
-    setChatInput("");
+    const text = chatInput.trim(); setChatInput("");
     await supabase.from("messages").insert({ room_id: roomId, user_id: currentUser, message: text });
     setSending(false);
     inputRef.current?.focus();
@@ -193,8 +205,7 @@ export default function RoomPage() {
     if (!isHost || ending) return;
     setEnding(true);
     await supabase.from("rooms").update({ status: "ended" }).eq("id", roomId);
-    setEnded(true);
-    setEnding(false);
+    setEnded(true); setEnding(false);
   };
 
   const leaveRoom = async () => {
@@ -205,9 +216,12 @@ export default function RoomPage() {
   const sendTip = async () => {
     if (!currentUser || !room || tipLoading || !tipAmount || !tipPayment) return;
     setTipLoading(true);
-    await supabase.from("transactions").insert({ from_user_id: currentUser, to_user_id: room.host_id, room_id: roomId, amount: parseFloat(tipAmount), transaction_type: "tip", status: "completed", reference: `tip-${Date.now()}` });
-    setTipSent(true);
-    setTipLoading(false);
+    await supabase.from("transactions").insert({
+      from_user_id: currentUser, to_user_id: room.host_id, room_id: roomId,
+      amount: parseFloat(tipAmount), transaction_type: "tip", status: "completed",
+      reference: `tip-${Date.now()}`,
+    });
+    setTipSent(true); setTipLoading(false);
     setTimeout(() => { setTipOpen(false); setTipSent(false); setTipAmount(""); setTipPayment(""); setTipStep("amount"); }, 3000);
   };
 
@@ -220,102 +234,43 @@ export default function RoomPage() {
   );
   if (!room) return null;
 
-  const statusColor = ended ? "#737373" : room.status === "live" ? "#059669" : "#D97706";
-  const statusLabel = ended ? "Ended" : room.status === "live" ? "Live" : "Scheduled";
-
-  /* ── PARTICIPANT GRID (Clubhouse style) ── */
-  const ParticipantGrid = () => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))", gap: "1rem 0.5rem", padding: "1rem" }}>
-      {participants.map(p => {
-        const prof = p.profiles;
-        if (!prof) return null;
-        const isRoomHost = p.user_id === room.host_id;
-        const isMe = p.user_id === currentUser;
-        const isSelected = selectedUser?.user_id === p.user_id;
-        const isMuted = mutedUsers.has(p.user_id);
-        const hasHand = handQueue.find(h => h.user_id === p.user_id);
-        return (
-          <div key={p.id} onClick={() => setSelectedUser(isSelected ? null : p)}
-            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: "pointer", position: "relative" }}>
-            <div style={{ position: "relative" }}>
-              <Av id={prof.id} name={prof.display_name} url={prof.avatar_url} size={56}
-                ring={isSelected} speaking={isRoomHost && room.status === "live"} />
-              {/* Host crown badge */}
-              {isRoomHost && (
-                <div style={{ position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", background: "#D97706", borderRadius: 100, padding: "1px 5px", display: "flex", alignItems: "center", gap: 2 }}>
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  <span style={{ fontSize: "0.52rem", color: "#fff", fontFamily: "sans-serif", fontWeight: 700 }}>HOST</span>
-                </div>
-              )}
-              {/* Muted badge */}
-              {isMuted && (
-                <div style={{ position: "absolute", bottom: 0, right: 0, width: 18, height: 18, borderRadius: "50%", background: "#EF4444", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                </div>
-              )}
-              {/* Hand raised badge */}
-              {hasHand && (
-                <div style={{ position: "absolute", bottom: 0, left: 0, width: 18, height: 18, borderRadius: "50%", background: "#D97706", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
-                  ✋
-                </div>
-              )}
-              {/* Me indicator */}
-              {isMe && (
-                <div style={{ position: "absolute", bottom: 0, right: 0, width: 18, height: 18, borderRadius: "50%", background: "#3B82F6", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                </div>
-              )}
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {isMe ? "You" : prof.display_name.split(" ")[0]}
-              </div>
-              {!isRoomHost && !isMe && (
-                <button onClick={e => { e.stopPropagation(); toggleFollow(p.user_id); }} style={{
-                  background: "none", border: "none", cursor: "pointer", padding: 0,
-                  fontSize: "0.62rem", color: following.has(p.user_id) ? "var(--text3)" : "#D97706",
-                  fontFamily: "sans-serif", fontWeight: 600,
-                }}>
-                  {following.has(p.user_id) ? "Following" : "+ Follow"}
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+  const isLive = room.status === "live" && !ended;
+  const hostProf = room.profiles;
+  const nonHostParticipants = participants.filter(p => p.user_id !== room.host_id);
 
   /* ── CHAT PANEL ── */
-  const ChatPanel = ({ height = "100%" }: { height?: string }) => (
-    <div style={{ display: "flex", flexDirection: "column", height, background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 6 }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text3)", fontFamily: "sans-serif" }}>Live chat</span>
-        <span style={{ marginLeft: "auto", fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{messages.length}</span>
+  const ChatContent = () => (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* header */}
+      <div style={{ padding: "1rem 1.25rem 0.75rem", borderBottom: "1px solid var(--divider)", display: "flex", alignItems: "center", gap: 8 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span style={{ fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text3)", fontFamily: "sans-serif" }}>Live chat</span>
+        <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif", fontWeight: 600 }}>{messages.length}</span>
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+      {/* messages */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "1rem 1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
         {messages.length === 0 && (
-          <div style={{ textAlign: "center", color: "var(--text3)", fontSize: "0.78rem", fontFamily: "sans-serif", marginTop: "2rem" }}>No messages yet</div>
+          <p style={{ textAlign: "center", color: "var(--text3)", fontSize: "0.82rem", fontFamily: "sans-serif", marginTop: "2rem" }}>No messages yet — say something!</p>
         )}
         {messages.map(msg => {
           const isMe = msg.user_id === currentUser;
           return (
-            <div key={msg.id} style={{ display: "flex", gap: 7, alignItems: "flex-start", flexDirection: isMe ? "row-reverse" : "row" }}>
-              <Av id={msg.user_id} name={msg.profiles?.display_name ?? "?"} url={msg.profiles?.avatar_url} size={26} />
-              <div style={{ maxWidth: "76%", display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", gap: 2 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 5, flexDirection: isMe ? "row-reverse" : "row" }}>
-                  <span style={{ fontSize: "0.7rem", fontWeight: 600, color: isMe ? "#D97706" : "var(--text2)", fontFamily: "sans-serif" }}>
+            <div key={msg.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexDirection: isMe ? "row-reverse" : "row" }}>
+              <Av id={msg.user_id} name={msg.profiles?.display_name ?? "?"} url={msg.profiles?.avatar_url} size={32} />
+              <div style={{ maxWidth: "72%", display: "flex", flexDirection: "column", gap: 3, alignItems: isMe ? "flex-end" : "flex-start" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexDirection: isMe ? "row-reverse" : "row" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>
                     {isMe ? "You" : (msg.profiles?.display_name ?? "User")}
                   </span>
-                  <span style={{ fontSize: "0.6rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{fmtTime(msg.created_at)}</span>
+                  <span style={{ fontSize: "0.65rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{fmtTime(msg.created_at)}</span>
                 </div>
                 <div style={{
-                  background: isMe ? "rgba(217,119,6,0.12)" : "var(--bg2)",
-                  border: `0.5px solid ${isMe ? "rgba(217,119,6,0.25)" : "var(--border)"}`,
-                  borderRadius: isMe ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-                  padding: "7px 11px", fontSize: "0.84rem", color: "var(--text)",
-                  fontFamily: "sans-serif", lineHeight: 1.5, wordBreak: "break-word" as const,
+                  background: isMe ? "#D97706" : "var(--bg2)",
+                  color: isMe ? "#fff" : "var(--text)",
+                  borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                  padding: "9px 13px", fontSize: "0.88rem", fontFamily: "sans-serif",
+                  lineHeight: 1.55, wordBreak: "break-word" as const,
+                  boxShadow: isMe ? "0 2px 8px rgba(217,119,6,0.25)" : "none",
                 }}>
                   {msg.message}
                 </div>
@@ -325,25 +280,29 @@ export default function RoomPage() {
         })}
         <div ref={chatEndRef} />
       </div>
+      {/* input */}
       {!ended && currentUser ? (
-        <div style={{ padding: "0.65rem 0.75rem", borderTop: "0.5px solid var(--border)", display: "flex", gap: 7 }}>
-          <input ref={inputRef} value={chatInput} onChange={e => setChatInput(e.target.value)}
+        <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid var(--divider)", display: "flex", gap: 8, alignItems: "center" }}>
+          <input ref={inputRef} value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-            placeholder="Say something..." maxLength={400}
-            style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 20, padding: "8px 14px", fontSize: "0.84rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none" }}
+            placeholder="Type a message..."
+            style={{ flex: 1, background: "var(--bg2)", border: "none", borderRadius: 24, padding: "10px 16px", fontSize: "0.88rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none" }}
           />
           <button onClick={sendMessage} disabled={!chatInput.trim() || sending} style={{
-            width: 34, height: 34, borderRadius: "50%", border: "none",
+            width: 38, height: 38, borderRadius: "50%", border: "none", flexShrink: 0,
             background: chatInput.trim() ? "#D97706" : "var(--bg2)",
             cursor: chatInput.trim() ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: chatInput.trim() ? "0 2px 8px rgba(217,119,6,0.35)" : "none",
+            transition: "all 0.2s",
           }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim() ? "#fff" : "var(--text3)"} strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim() ? "#fff" : "var(--text3)"} strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
       ) : !currentUser ? (
-        <div style={{ padding: "0.65rem 0.75rem", borderTop: "0.5px solid var(--border)" }}>
-          <button onClick={() => router.push("/register")} style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 8, padding: "9px", fontSize: "0.84rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+        <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid var(--divider)" }}>
+          <button onClick={() => router.push("/register")} style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 24, padding: "10px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
             Sign in to chat
           </button>
         </div>
@@ -351,332 +310,420 @@ export default function RoomPage() {
     </div>
   );
 
-  /* ── INFO PANEL ── */
-  const InfoPanel = () => (
-    <div style={{ background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)" }}>
-        <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text3)", fontFamily: "sans-serif" }}>Room info</span>
-      </div>
-      <div style={{ padding: "1rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
-        {[
-          { l: "Category",  v: room.category,      cap: true },
-          { l: "Language",  v: room.language,      cap: true },
-          { l: "Date",      v: fmtDate(room.scheduled_at) },
-          { l: "Time",      v: fmtTime(room.scheduled_at) },
-          { l: "Duration",  v: room.duration_minutes ? `${room.duration_minutes} min` : "Open" },
-          { l: "Ticket",    v: room.is_ticketed ? `$${room.ticket_price.toFixed(2)}` : "Free" },
-        ].map(item => (
-          <div key={item.l}>
-            <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: 2 }}>{item.l}</div>
-            <div style={{ fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif", textTransform: item.cap ? "capitalize" : "none" }}>{item.v}</div>
-          </div>
-        ))}
-      </div>
-      {room.description && (
-        <div style={{ padding: "0 1rem 1rem" }}>
-          <div style={{ fontSize: "0.6rem", fontWeight: 700, color: "var(--text3)", letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: 4 }}>About</div>
-          <p style={{ fontSize: "0.82rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.65, margin: 0 }}>{room.description}</p>
-        </div>
+  /* ── BOTTOM ACTION BAR ── */
+  const BottomBar = ({ compact = false }: { compact?: boolean }) => (
+    <div style={{
+      display: "flex", alignItems: "center", gap: compact ? 6 : 8,
+      padding: compact ? "0.6rem 0.75rem" : "0.85rem 1.25rem",
+      borderTop: "1px solid var(--divider)",
+      background: "var(--bg)",
+    }}>
+      {/* Raise hand */}
+      {!isHost && !ended && currentUser && (
+        <button onClick={toggleHand} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: compact ? "8px 12px" : "10px 16px",
+          borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
+          fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 600,
+          background: myHandRaised ? "rgba(217,119,6,0.1)" : "var(--bg2)",
+          border: `1.5px solid ${myHandRaised ? "#D97706" : "var(--border2)"}`,
+          color: myHandRaised ? "#D97706" : "var(--text2)",
+          transition: "all 0.2s", flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a6 6 0 0 0 12 0v-3a2 2 0 0 0-4 0v0"/></svg>
+          {myHandRaised ? "Lower" : "Raise Hand"}
+        </button>
       )}
-    </div>
-  );
 
-  /* ── SELECTED USER CARD ── */
-  const UserCard = () => {
-    if (!selectedUser?.profiles) return null;
-    const prof = selectedUser.profiles;
-    const isRoomHost = selectedUser.user_id === room.host_id;
-    const isMe = selectedUser.user_id === currentUser;
-    return (
-      <div style={{ background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 12, padding: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "0.75rem" }}>
-          <Av id={prof.id} name={prof.display_name} url={prof.avatar_url} size={44} />
-          <div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{prof.display_name}</div>
-            {isRoomHost && <div style={{ fontSize: "0.65rem", color: "#D97706", fontFamily: "sans-serif", fontWeight: 600 }}>Host</div>}
-          </div>
-          <button onClick={() => setSelectedUser(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: "1.1rem" }}>×</button>
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-          <button onClick={() => router.push(`/profile/${prof.id}`)} style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 7, padding: "7px", fontSize: "0.78rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)" }}>
-            View profile
-          </button>
-          {!isMe && !isRoomHost && (
-            <button onClick={() => toggleFollow(selectedUser.user_id)} style={{ flex: 1, background: following.has(selectedUser.user_id) ? "transparent" : "#D97706", border: `0.5px solid ${following.has(selectedUser.user_id) ? "var(--border2)" : "#D97706"}`, borderRadius: 7, padding: "7px", fontSize: "0.78rem", cursor: "pointer", fontFamily: "sans-serif", color: following.has(selectedUser.user_id) ? "var(--text3)" : "#fff", fontWeight: 600 }}>
-              {following.has(selectedUser.user_id) ? "Following ✓" : "+ Follow"}
-            </button>
-          )}
-          {isHost && !isMe && (
-            <button onClick={() => { setMutedUsers(prev => { const n = new Set(prev); n.has(selectedUser.user_id) ? n.delete(selectedUser.user_id) : n.add(selectedUser.user_id); return n; }); }} style={{ flex: 1, background: mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.1)" : "var(--bg2)", border: `0.5px solid ${mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.3)" : "var(--border2)"}`, borderRadius: 7, padding: "7px", fontSize: "0.78rem", cursor: "pointer", fontFamily: "sans-serif", color: mutedUsers.has(selectedUser.user_id) ? "#EF4444" : "var(--text3)" }}>
-              {mutedUsers.has(selectedUser.user_id) ? "Unmute" : "Mute"}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
+      {/* Chat toggle (shows on both mobile + desktop) */}
+      <button onClick={() => setChatOpen(v => !v)} style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: compact ? "8px 12px" : "10px 16px",
+        borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
+        fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 600,
+        background: chatOpen ? "rgba(217,119,6,0.1)" : "var(--bg2)",
+        border: `1.5px solid ${chatOpen ? "#D97706" : "var(--border2)"}`,
+        color: chatOpen ? "#D97706" : "var(--text2)",
+        transition: "all 0.2s", flexShrink: 0,
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chat {messages.length > 0 && messages.length}
+      </button>
 
-  /* ── hand queue ── */
-  const HandQueuePanel = () => handQueue.length === 0 ? null : (
-    <div style={{ background: "rgba(217,119,6,0.06)", border: "0.5px solid rgba(217,119,6,0.25)", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ padding: "0.65rem 1rem", borderBottom: "0.5px solid rgba(217,119,6,0.15)", display: "flex", gap: 6, alignItems: "center" }}>
-        <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "#D97706", fontFamily: "sans-serif" }}>Hands raised · {handQueue.length}</span>
-      </div>
-      <div style={{ padding: "0.5rem" }}>
-        {handQueue.map(h => (
-          <div key={h.user_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.4rem 0.5rem", borderRadius: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Av id={h.user_id} name={h.display_name} size={28} />
-              <span style={{ fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif" }}>{h.display_name}</span>
-            </div>
-            {isHost && (
-              <div style={{ display: "flex", gap: 5 }}>
-                <button onClick={() => setHandQueue(prev => prev.filter(q => q.user_id !== h.user_id))} style={{ background: "rgba(5,150,105,0.12)", color: "#059669", border: "0.5px solid rgba(5,150,105,0.3)", borderRadius: 5, padding: "3px 10px", fontSize: "0.72rem", cursor: "pointer", fontFamily: "sans-serif", fontWeight: 600 }}>Allow</button>
-                <button onClick={() => setHandQueue(prev => prev.filter(q => q.user_id !== h.user_id))} style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "0.5px solid rgba(239,68,68,0.2)", borderRadius: 5, padding: "3px 10px", fontSize: "0.72rem", cursor: "pointer", fontFamily: "sans-serif" }}>Dismiss</button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Tip */}
+      {!isHost && !ended && currentUser && (
+        <button onClick={() => setTipOpen(true)} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: compact ? "8px 14px" : "10px 18px",
+          borderRadius: 24, border: "none", cursor: "pointer", fontFamily: "sans-serif",
+          fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 700,
+          background: "#D97706", color: "#fff",
+          boxShadow: "0 2px 10px rgba(217,119,6,0.35)",
+          flexShrink: 0,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Tip
+        </button>
+      )}
+
+      {/* Host: end room */}
+      {isHost && !ended && (
+        <button onClick={endRoom} disabled={ending} style={{
+          padding: compact ? "8px 14px" : "10px 18px", borderRadius: 24, fontFamily: "sans-serif",
+          fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 700, cursor: "pointer",
+          background: "rgba(239,68,68,0.1)", color: "#EF4444",
+          border: "1.5px solid rgba(239,68,68,0.3)", flexShrink: 0,
+        }}>
+          {ending ? "Ending..." : "End Room"}
+        </button>
+      )}
+
+      {/* Leave */}
+      <button onClick={leaveRoom} style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: compact ? "8px 12px" : "10px 16px",
+        borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
+        fontSize: compact ? "0.78rem" : "0.85rem", fontWeight: 600,
+        background: "var(--bg2)", border: "1.5px solid var(--border2)", color: "var(--text2)",
+        flexShrink: 0,
+      }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Leave
+      </button>
     </div>
   );
 
   return (
     <>
-      {/* ── TOP NAV ── */}
-      <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.8rem 1.25rem", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
-        <button onClick={() => router.push("/rooms")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text2)", display: "flex", alignItems: "center", gap: 4, fontSize: "0.82rem", fontFamily: "sans-serif", flexShrink: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-          Rooms
-        </button>
+      <div style={{ background: "var(--bg)", minHeight: "100vh", display: "flex", flexDirection: "column", transition: "background 0.3s" }}>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" as const }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: room.status === "live" ? "rgba(5,150,105,0.12)" : ended ? "var(--bg2)" : "rgba(217,119,6,0.1)", border: `0.5px solid ${statusColor}30`, borderRadius: 100, padding: "2px 8px" }}>
-              {room.status === "live" && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#059669", display: "inline-block", animation: "pulse 1.5s infinite" }} />}
-              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: statusColor, fontFamily: "sans-serif", letterSpacing: "0.05em" }}>{statusLabel}</span>
+        {/* ── TOP NAV ── */}
+        <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.75rem 1.25rem", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
+          <button onClick={() => router.push("/rooms")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text2)", display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontFamily: "sans-serif", fontWeight: 500, flexShrink: 0, padding: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Rooms
+          </button>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            {isLive && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(5,150,105,0.1)", border: "0.5px solid rgba(5,150,105,0.3)", borderRadius: 100, padding: "3px 9px", flexShrink: 0 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#059669", display: "inline-block", animation: "livepulse 1.5s ease-in-out infinite" }} />
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#059669", fontFamily: "sans-serif", letterSpacing: "0.04em" }}>Live</span>
+              </span>
+            )}
+            {!isLive && !ended && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(217,119,6,0.1)", border: "0.5px solid rgba(217,119,6,0.3)", borderRadius: 100, padding: "3px 9px", flexShrink: 0 }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#D97706", fontFamily: "sans-serif" }}>Scheduled</span>
+              </span>
+            )}
+            {ended && (
+              <span style={{ display: "inline-flex", alignItems: "center", background: "var(--bg2)", border: "0.5px solid var(--border)", borderRadius: 100, padding: "3px 9px", flexShrink: 0 }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text3)", fontFamily: "sans-serif" }}>Ended</span>
+              </span>
+            )}
+            <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+              {room.title}
             </span>
-            <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, maxWidth: "clamp(120px, 30vw, 300px)" }}>{room.title}</span>
+          </div>
+        </nav>
+
+        {/* ── BODY ── */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+
+          {/* ── MAIN CONTENT ── */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", minWidth: 0 }}>
+
+            {/* Ended banner */}
+            {ended && (
+              <div style={{ background: "rgba(239,68,68,0.06)", borderBottom: "0.5px solid rgba(239,68,68,0.15)", padding: "0.6rem 1.25rem" }}>
+                <p style={{ fontSize: "0.82rem", color: "#EF4444", fontFamily: "sans-serif", margin: 0 }}>This room has ended. Chat is read-only.</p>
+              </div>
+            )}
+
+            {/* ── HOST HERO ── */}
+            <div style={{ padding: "2rem 1.5rem 1.25rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              {/* Big host avatar */}
+              <div style={{ position: "relative", marginBottom: "1rem" }}>
+                <div style={{
+                  width: 110, height: 110, borderRadius: "50%", overflow: "hidden",
+                  background: AVATAR_COLOR(hostProf?.id ?? "host"),
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "2.2rem", fontWeight: 700, color: "#fff", fontFamily: "sans-serif",
+                  border: isLive ? "3.5px solid #059669" : "3px solid var(--border2)",
+                  boxShadow: isLive ? "0 0 0 6px rgba(5,150,105,0.12), 0 8px 32px rgba(0,0,0,0.12)" : "0 4px 20px rgba(0,0,0,0.1)",
+                  transition: "border 0.3s, box-shadow 0.3s",
+                }}>
+                  {hostProf?.avatar_url
+                    ? <img src={hostProf.avatar_url} alt={hostProf.display_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : INITIALS(hostProf?.display_name ?? "H")}
+                </div>
+                {/* HOST badge */}
+                <div style={{ position: "absolute", top: -4, left: "50%", transform: "translateX(-50%)", background: "#D97706", borderRadius: 100, padding: "2px 9px", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "#fff", fontFamily: "sans-serif", letterSpacing: "0.07em" }}>HOST</span>
+                </div>
+                {/* Speaking indicator */}
+                {isLive && (
+                  <div style={{ position: "absolute", bottom: 2, right: 2, background: "#059669", borderRadius: "50%", width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--bg)" }}>
+                    <svg width="12" height="10" viewBox="0 0 20 16" fill="none">
+                      {[0,1,2,3,4].map(i => (
+                        <rect key={i} x={i*4} y={i%2===0?3:0} width="2.5" height={i%2===0?10:16} rx="1.25" fill="#fff"
+                          style={{ animation: `wave 0.8s ease-in-out ${i*0.12}s infinite alternate` }}
+                        />
+                      ))}
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Host name */}
+              <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", margin: "0 0 0.25rem", fontFamily: "sans-serif", letterSpacing: "-0.02em" }}>
+                {hostProf?.display_name ?? "Host"}
+              </h1>
+
+              {/* Speaking status */}
+              {isLive && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "1rem" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#059669", display: "inline-block", animation: "livepulse 1s ease-in-out infinite" }} />
+                  <span style={{ fontSize: "0.82rem", color: "#059669", fontFamily: "sans-serif", fontWeight: 600 }}>Speaking...</span>
+                </div>
+              )}
+
+              {/* Description */}
+              {room.description && (
+                <p style={{ fontSize: "0.9rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.65, maxWidth: 440, margin: "0 0 1.25rem", textAlign: "center" }}>
+                  {room.description}
+                </p>
+              )}
+
+              {/* Meta row */}
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" as const, justifyContent: "center", marginBottom: "1.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{participants.length} in room</span>
+                </div>
+                <div style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--border2)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", textTransform: "capitalize" }}>{room.category}</span>
+                </div>
+                <div style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--border2)" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <span style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", textTransform: "capitalize" }}>{room.language}</span>
+                </div>
+              </div>
+
+              {/* Hand queue */}
+              {handQueue.length > 0 && (
+                <div style={{ width: "100%", maxWidth: 480, background: "rgba(217,119,6,0.06)", border: "0.5px solid rgba(217,119,6,0.2)", borderRadius: 12, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+                  <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#D97706", letterSpacing: "0.07em", textTransform: "uppercase", fontFamily: "sans-serif", marginBottom: "0.5rem" }}>
+                    ✋ Hands raised · {handQueue.length}
+                  </div>
+                  {handQueue.map(h => (
+                    <div key={h.user_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.35rem 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Av id={h.user_id} name={h.display_name} size={26} />
+                        <span style={{ fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif" }}>{h.display_name}</span>
+                      </div>
+                      {isHost && (
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <button onClick={() => setHandQueue(p => p.filter(q => q.user_id !== h.user_id))} style={{ background: "rgba(5,150,105,0.12)", color: "#059669", border: "0.5px solid rgba(5,150,105,0.3)", borderRadius: 20, padding: "3px 10px", fontSize: "0.72rem", cursor: "pointer", fontFamily: "sans-serif", fontWeight: 600 }}>Allow</button>
+                          <button onClick={() => setHandQueue(p => p.filter(q => q.user_id !== h.user_id))} style={{ background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "0.5px solid rgba(239,68,68,0.2)", borderRadius: 20, padding: "3px 10px", fontSize: "0.72rem", cursor: "pointer", fontFamily: "sans-serif" }}>Dismiss</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── SPEAKERS / PARTICIPANTS ── */}
+              {nonHostParticipants.length > 0 && (
+                <div style={{ width: "100%", maxWidth: 520, marginBottom: "0.5rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem", padding: "0 0.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Speakers</span>
+                      <span style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{nonHostParticipants.length}</span>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  {/* Horizontal scroll row */}
+                  <div style={{ display: "flex", gap: "0.85rem", overflowX: "auto", paddingBottom: "0.5rem", scrollbarWidth: "none" as const }}>
+                    {nonHostParticipants.map(p => {
+                      const prof = p.profiles;
+                      if (!prof) return null;
+                      const isMe = p.user_id === currentUser;
+                      const isSelected = selectedUser?.user_id === p.user_id;
+                      return (
+                        <div key={p.id} onClick={() => setSelectedUser(isSelected ? null : p)}
+                          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", flexShrink: 0, minWidth: 60 }}>
+                          <div style={{ position: "relative" }}>
+                            <Av id={prof.id} name={prof.display_name} url={prof.avatar_url} size={52} border={isSelected} />
+                            {mutedUsers.has(p.user_id) && (
+                              <div style={{ position: "absolute", bottom: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: "#EF4444", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", textAlign: "center" }}>
+                            {isMe ? "You" : prof.display_name.split(" ")[0]}
+                          </span>
+                          {!isMe && (
+                            <button onClick={e => { e.stopPropagation(); toggleFollow(p.user_id); }} style={{
+                              background: "none", border: "none", padding: 0, cursor: "pointer",
+                              fontSize: "0.65rem", color: following.has(p.user_id) ? "var(--text3)" : "#D97706",
+                              fontFamily: "sans-serif", fontWeight: 600,
+                            }}>
+                              {following.has(p.user_id) ? "Following" : "+ Follow"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Selected user action card */}
+                  {selectedUser?.profiles && (
+                    <div style={{ marginTop: "0.75rem", background: "var(--bg2)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "0.9rem 1rem", display: "flex", alignItems: "center", gap: 10 }}>
+                      <Av id={selectedUser.profiles.id} name={selectedUser.profiles.display_name} url={selectedUser.profiles.avatar_url} size={38} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{selectedUser.profiles.display_name}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => router.push(`/profile/${selectedUser.profiles!.id}`)} style={{ background: "var(--bg)", border: "0.5px solid var(--border2)", borderRadius: 20, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)", fontWeight: 600 }}>Profile</button>
+                        {selectedUser.user_id !== currentUser && (
+                          <button onClick={() => toggleFollow(selectedUser.user_id)} style={{ background: following.has(selectedUser.user_id) ? "transparent" : "#D97706", border: `0.5px solid ${following.has(selectedUser.user_id) ? "var(--border2)" : "#D97706"}`, borderRadius: 20, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: following.has(selectedUser.user_id) ? "var(--text3)" : "#fff", fontWeight: 600 }}>
+                            {following.has(selectedUser.user_id) ? "Following ✓" : "+ Follow"}
+                          </button>
+                        )}
+                        {isHost && selectedUser.user_id !== currentUser && (
+                          <button onClick={() => { setMutedUsers(prev => { const n = new Set(prev); n.has(selectedUser.user_id) ? n.delete(selectedUser.user_id) : n.add(selectedUser.user_id); return n; }); }} style={{ background: mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.1)" : "var(--bg)", border: `0.5px solid ${mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.3)" : "var(--border2)"}`, borderRadius: 20, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: mutedUsers.has(selectedUser.user_id) ? "#EF4444" : "var(--text2)", fontWeight: 600 }}>
+                            {mutedUsers.has(selectedUser.user_id) ? "Unmute" : "Mute"}
+                          </button>
+                        )}
+                        <button onClick={() => setSelectedUser(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: "1rem", padding: "0 2px" }}>×</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Bottom bar — always at bottom of main column */}
+            <div style={{ marginTop: "auto" }}>
+              <BottomBar compact={false} />
+            </div>
+          </div>
+
+          {/* ── CHAT SIDEBAR (desktop: always visible, mobile: hidden) ── */}
+          <div className="chat-sidebar" style={{
+            width: 340, flexShrink: 0, borderLeft: "1px solid var(--divider)",
+            display: "flex", flexDirection: "column", height: "100%",
+          }}>
+            <ChatContent />
           </div>
         </div>
+      </div>
 
-        {/* Desktop: action buttons */}
-        <div style={{ display: "flex", gap: 7, alignItems: "center", flexShrink: 0 }}>
-          {!isHost && !ended && currentUser && (
-            <button onClick={() => setTipOpen(true)} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", display: "flex", alignItems: "center", gap: 5 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              Tip
-            </button>
-          )}
-          {isHost && !ended && (
-            <button onClick={endRoom} disabled={ending} style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444", border: "0.5px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "7px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
-              {ending ? "Ending..." : "End"}
-            </button>
-          )}
-          <button onClick={leaveRoom} style={{ background: "transparent", color: "var(--text2)", border: "0.5px solid var(--border2)", borderRadius: 8, padding: "7px 14px", fontSize: "0.8rem", cursor: "pointer", fontFamily: "sans-serif" }}>
-            Leave
-          </button>
-        </div>
-      </nav>
-
-      {/* ── ENDED BANNER ── */}
-      {ended && (
-        <div style={{ background: "rgba(239,68,68,0.07)", borderBottom: "0.5px solid rgba(239,68,68,0.2)", padding: "0.65rem 1.25rem" }}>
-          <p style={{ fontSize: "0.82rem", color: "#EF4444", fontFamily: "sans-serif", margin: 0 }}>This room has ended. Chat is read-only.</p>
+      {/* ── MOBILE CHAT PANEL (slide up) ── */}
+      {chatOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 80, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div onClick={() => setChatOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div style={{ position: "relative", background: "var(--bg)", borderRadius: "20px 20px 0 0", height: "75vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid var(--divider)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Live chat</span>
+              <button onClick={() => setChatOpen(false)} style={{ background: "none", border: "none", fontSize: "1.3rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <ChatContent />
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── MAIN LAYOUT ── */}
-      <div style={{ background: "var(--bg)", minHeight: "calc(100vh - 56px)", transition: "background 0.3s" }}>
-        {/* Desktop: 3-column grid */}
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "1.25rem", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,340px)", gap: "1.25rem" }}>
-
-          {/* ── LEFT: Stage + controls ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
-
-            {/* Host strip */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.85rem 1rem", background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 12 }}>
-              <Av id={room.profiles?.id ?? ""} name={room.profiles?.display_name ?? "Host"} url={room.profiles?.avatar_url} size={40} speaking={room.status === "live"} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "0.75rem", color: "#D97706", fontFamily: "sans-serif", fontWeight: 700, marginBottom: 1 }}>HOST</div>
-                <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, cursor: "pointer" }}
-                  onClick={() => room.profiles?.id && router.push(`/profile/${room.profiles.id}`)}
-                >
-                  {room.profiles?.display_name ?? "Unknown"}
-                </div>
-              </div>
-              <span style={{ display: "inline-block", background: "var(--bg2)", color: "var(--text3)", border: "0.5px solid var(--border)", borderRadius: 100, padding: "2px 8px", fontSize: "0.65rem", fontFamily: "sans-serif", textTransform: "capitalize" }}>{room.category}</span>
-              <span style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{participants.length} in room</span>
-            </div>
-
-            {/* Hand queue */}
-            <HandQueuePanel />
-
-            {/* Participant grid */}
-            <div style={{ background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text3)", fontFamily: "sans-serif" }}>Speakers & listeners</span>
-                <span style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{participants.length}</span>
-              </div>
-              <ParticipantGrid />
-            </div>
-
-            {/* Selected user card */}
-            {selectedUser && <UserCard />}
-
-            {/* Bottom action bar */}
-            <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "0.85rem 1rem", background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 12 }}>
-              {!isHost && !ended && currentUser && (
-                <button onClick={toggleHand} style={{
-                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-                  padding: "10px", borderRadius: 10, cursor: "pointer", fontFamily: "sans-serif",
-                  fontSize: "0.88rem", fontWeight: 700,
-                  background: myHandRaised ? "rgba(217,119,6,0.12)" : "var(--bg2)",
-                  border: `1px solid ${myHandRaised ? "#D97706" : "var(--border2)"}`,
-                  color: myHandRaised ? "#D97706" : "var(--text2)",
-                  transition: "all 0.2s",
-                }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a6 6 0 0 0 12 0v-3a2 2 0 0 0-4 0v0"/></svg>
-                  {myHandRaised ? "Lower hand" : "Raise hand to speak"}
-                </button>
-              )}
-              {isHost && !ended && (
-                <button onClick={endRoom} disabled={ending} style={{ flex: 1, background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "0.5px solid rgba(239,68,68,0.25)", borderRadius: 10, padding: "10px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
-                  {ending ? "Ending..." : "End room for everyone"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ── RIGHT: Chat + Info ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <ChatPanel height="clamp(360px, 55vh, 520px)" />
-            <InfoPanel />
-          </div>
-        </div>
-
-        {/* ── MOBILE BOTTOM BAR ── */}
-        <div style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40, background: "var(--bg)", borderTop: "0.5px solid var(--border)", padding: "0.6rem 1rem", gap: 8 }} className="mobile-bar">
-          <button onClick={() => setMobilePanel(mobilePanel === "chat" ? null : "chat")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: `0.5px solid ${mobilePanel === "chat" ? "#D97706" : "var(--border2)"}`, background: mobilePanel === "chat" ? "rgba(217,119,6,0.1)" : "var(--bg2)", color: mobilePanel === "chat" ? "#D97706" : "var(--text2)", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
-            💬 Chat {messages.length > 0 && `(${messages.length})`}
-          </button>
-          <button onClick={() => setMobilePanel(mobilePanel === "people" ? null : "people")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: `0.5px solid ${mobilePanel === "people" ? "#D97706" : "var(--border2)"}`, background: mobilePanel === "people" ? "rgba(217,119,6,0.1)" : "var(--bg2)", color: mobilePanel === "people" ? "#D97706" : "var(--text2)", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
-            👥 People ({participants.length})
-          </button>
-          <button onClick={() => setMobilePanel(mobilePanel === "info" ? null : "info")} style={{ flex: 1, padding: "9px", borderRadius: 10, border: `0.5px solid ${mobilePanel === "info" ? "#D97706" : "var(--border2)"}`, background: mobilePanel === "info" ? "rgba(217,119,6,0.1)" : "var(--bg2)", color: mobilePanel === "info" ? "#D97706" : "var(--text2)", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
-            ℹ️ Info
-          </button>
-          {!isHost && !ended && currentUser && (
-            <button onClick={() => setTipOpen(true)} style={{ padding: "9px 14px", borderRadius: 10, border: "none", background: "#D97706", color: "#fff", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
-              ❤️ Tip
-            </button>
-          )}
-        </div>
-
-        {/* ── MOBILE SLIDE-UP PANEL ── */}
-        {mobilePanel && (
-          <div onClick={e => { if ((e.target as HTMLElement).id === "mob-overlay") setMobilePanel(null); }} id="mob-overlay"
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 60, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-            <div style={{ background: "var(--bg)", borderRadius: "16px 16px 0 0", maxHeight: "80vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "0.75rem 1rem", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>
-                  {mobilePanel === "chat" ? "Live chat" : mobilePanel === "people" ? `People (${participants.length})` : "Room info"}
-                </span>
-                <button onClick={() => setMobilePanel(null)} style={{ background: "none", border: "none", fontSize: "1.3rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
-              </div>
-              <div style={{ flex: 1, overflow: "auto" }}>
-                {mobilePanel === "chat" && <ChatPanel height="100%" />}
-                {mobilePanel === "people" && (
-                  <div>
-                    <ParticipantGrid />
-                    {selectedUser && <div style={{ padding: "0 1rem 1rem" }}><UserCard /></div>}
-                  </div>
-                )}
-                {mobilePanel === "info" && (
-                  <div style={{ padding: "1rem" }}>
-                    <InfoPanel />
-                    {!isHost && !ended && currentUser && (
-                      <button onClick={() => { setMobilePanel(null); setTipOpen(true); }} style={{ width: "100%", marginTop: "1rem", background: "#D97706", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
-                        ❤️ Tip {room.profiles?.display_name}
-                      </button>
-                    )}
-                    {!isHost && !ended && currentUser && (
-                      <button onClick={toggleHand} style={{ width: "100%", marginTop: "0.75rem", background: myHandRaised ? "rgba(217,119,6,0.1)" : "var(--bg2)", color: myHandRaised ? "#D97706" : "var(--text2)", border: `1px solid ${myHandRaised ? "#D97706" : "var(--border2)"}`, borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
-                        {myHandRaised ? "✋ Lower hand" : "✋ Raise hand to speak"}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ── TIP MODAL ── */}
       {tipOpen && (
-        <div onClick={e => { if ((e.target as HTMLElement).id === "tip-ov") closeTip(); }} id="tip-ov"
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "var(--bg)", borderRadius: 16, border: "0.5px solid var(--border)", width: "100%", maxWidth: 360, padding: "1.5rem" }}>
+        <div onClick={e => { if ((e.target as HTMLElement).id === "tip-bg") closeTip(); }} id="tip-bg"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}>
+          <div style={{ background: "var(--bg)", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 440, padding: "1.5rem 1.5rem 2rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Support {room.profiles?.display_name}</span>
-              <button onClick={closeTip} style={{ background: "none", border: "none", fontSize: "1.3rem", cursor: "pointer", color: "var(--text2)" }}>×</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Av id={hostProf?.id ?? ""} name={hostProf?.display_name ?? ""} url={hostProf?.avatar_url} size={36} />
+                <div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text3)", fontFamily: "sans-serif" }}>Supporting</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{hostProf?.display_name}</div>
+                </div>
+              </div>
+              <button onClick={closeTip} style={{ background: "var(--bg2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", color: "var(--text2)", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
             </div>
+
             {tipSent ? (
               <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(5,150,105,0.12)", border: "0.5px solid rgba(5,150,105,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(5,150,105,0.1)", border: "1.5px solid rgba(5,150,105,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <p style={{ color: "#059669", fontFamily: "sans-serif", fontWeight: 700, fontSize: "1rem", marginBottom: 4 }}>Tip sent!</p>
-                <p style={{ color: "var(--text2)", fontSize: "0.82rem", fontFamily: "sans-serif", lineHeight: 1.6 }}>
-                  USD ${parseFloat(tipAmount || "0").toFixed(2)} to {room.profiles?.display_name}<br/>
-                  <span style={{ color: "var(--text3)" }}>via {tipPayment}</span>
+                <p style={{ color: "#059669", fontFamily: "sans-serif", fontWeight: 700, fontSize: "1.1rem", marginBottom: 6 }}>Tip sent!</p>
+                <p style={{ color: "var(--text2)", fontSize: "0.88rem", fontFamily: "sans-serif", lineHeight: 1.6 }}>
+                  USD ${parseFloat(tipAmount || "0").toFixed(2)} to {hostProf?.display_name}<br/>
+                  <span style={{ color: "var(--text3)" }}>via {tipPayment} · 85% goes to creator</span>
                 </p>
               </div>
             ) : tipStep === "amount" ? (
               <>
-                <p style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1rem", lineHeight: 1.6 }}>~85% goes directly to the creator.</p>
-                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.4rem" }}>Amount (USD)</label>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.25rem" }}>
-                  <span style={{ fontSize: "1rem", color: "var(--text3)", fontFamily: "sans-serif" }}>$</span>
-                  <input type="number" min="0.10" step="0.10" value={tipAmount} onChange={e => setTipAmount(e.target.value)}
-                    placeholder="e.g. 2.50"
-                    style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 8, padding: "10px 12px", fontSize: "1rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none" }}
+                <p style={{ fontSize: "0.82rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1.25rem", lineHeight: 1.6 }}>
+                  ~85% goes directly to the creator.
+                </p>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.5rem" }}>
+                  Amount (USD)
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg2)", borderRadius: 14, padding: "2px 12px", marginBottom: "1.25rem", border: "1.5px solid var(--border)" }}>
+                  <span style={{ fontSize: "1.2rem", color: "var(--text3)", fontFamily: "sans-serif" }}>$</span>
+                  <input type="number" min="0.10" step="0.10" value={tipAmount}
+                    onChange={e => setTipAmount(e.target.value)}
+                    placeholder="0.00"
+                    style={{ flex: 1, background: "none", border: "none", padding: "12px 4px", fontSize: "1.4rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", fontWeight: 700 }}
                   />
                 </div>
                 <button onClick={() => { if (parseFloat(tipAmount) > 0) setTipStep("method"); }}
                   disabled={!tipAmount || parseFloat(tipAmount) <= 0}
-                  style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.92rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", opacity: !tipAmount || parseFloat(tipAmount) <= 0 ? 0.5 : 1 }}>
+                  style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: "1rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", opacity: !tipAmount || parseFloat(tipAmount) <= 0 ? 0.5 : 1, boxShadow: "0 4px 12px rgba(217,119,6,0.3)" }}>
                   Continue →
                 </button>
               </>
             ) : (
               <>
-                <button onClick={() => setTipStep("amount")} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: "0.78rem", fontFamily: "sans-serif", cursor: "pointer", padding: "0 0 0.75rem", display: "block" }}>← Back</button>
-                <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.25rem" }}>
-                  Sending USD ${parseFloat(tipAmount).toFixed(2)}
-                </p>
-                <p style={{ fontSize: "0.75rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1rem" }}>Choose payment method</p>
+                <button onClick={() => setTipStep("amount")} style={{ background: "none", border: "none", color: "#D97706", fontSize: "0.82rem", fontFamily: "sans-serif", cursor: "pointer", padding: "0 0 0.75rem", display: "block", fontWeight: 600 }}>
+                  ← Back
+                </button>
+                <div style={{ background: "var(--bg2)", borderRadius: 10, padding: "0.65rem 0.85rem", marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "0.82rem", color: "var(--text2)", fontFamily: "sans-serif" }}>Sending</span>
+                  <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#D97706", fontFamily: "sans-serif" }}>USD ${parseFloat(tipAmount).toFixed(2)}</span>
+                </div>
+                <p style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "0.75rem", fontWeight: 600 }}>Choose payment method</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: "1.25rem" }}>
                   {PAYMENT_METHODS.map(m => (
                     <button key={m.id} onClick={() => setTipPayment(m.id)} style={{
-                      display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-                      borderRadius: 10, cursor: "pointer", textAlign: "left" as const,
+                      display: "flex", alignItems: "center", gap: 12, padding: "11px 14px",
+                      borderRadius: 12, cursor: "pointer", textAlign: "left" as const,
                       background: tipPayment === m.id ? "rgba(217,119,6,0.08)" : "var(--bg2)",
-                      border: `0.5px solid ${tipPayment === m.id ? "#D97706" : "var(--border)"}`,
+                      border: `1.5px solid ${tipPayment === m.id ? "#D97706" : "var(--border)"}`,
                       transition: "all 0.15s",
                     }}>
                       <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: "0.88rem", fontWeight: 600, color: tipPayment === m.id ? "#D97706" : "var(--text)", fontFamily: "sans-serif" }}>{m.label}</div>
-                        <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{m.desc}</div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: tipPayment === m.id ? "#D97706" : "var(--text)", fontFamily: "sans-serif" }}>{m.label}</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{m.desc}</div>
                       </div>
-                      {tipPayment === m.id && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {tipPayment === m.id && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      )}
                     </button>
                   ))}
                 </div>
                 <button onClick={sendTip} disabled={!tipPayment || tipLoading}
-                  style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.92rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", opacity: !tipPayment ? 0.5 : 1 }}>
+                  style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: "1rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", opacity: !tipPayment ? 0.5 : 1, boxShadow: "0 4px 12px rgba(217,119,6,0.3)" }}>
                   {tipLoading ? "Processing..." : `Send $${parseFloat(tipAmount).toFixed(2)} via ${tipPayment || "..."}`}
                 </button>
               </>
@@ -686,23 +733,16 @@ export default function RoomPage() {
       )}
 
       <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @media (max-width: 700px) {
-          .mobile-bar { display: flex !important; }
-          [style*="grid-template-columns: minmax(0,1fr) minmax(0,340px)"] {
-            grid-template-columns: 1fr !important;
-          }
-          [style*="grid-template-columns: minmax(0,1fr) minmax(0,340px)"] > div:last-child {
-            display: none;
-          }
-          [style*="padding: 0.8rem 1.25rem"] {
-            padding: 0.7rem 0.75rem !important;
-          }
-          [style*="maxWidth: 1100px"] {
-            padding: 0.75rem !important;
-            padding-bottom: 80px !important;
-          }
+        @keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+        @keyframes wave { 0%{transform:scaleY(0.4)} 100%{transform:scaleY(1)} }
+        .chat-sidebar { display: flex !important; }
+        @media (max-width: 720px) {
+          .chat-sidebar { display: none !important; }
         }
+        * { -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
       `}</style>
     </>
   );
