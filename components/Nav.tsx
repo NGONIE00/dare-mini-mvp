@@ -19,6 +19,8 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [bellOpen,      setBellOpen]      = useState(false);
   const [userId,        setUserId]        = useState<string | null>(null);
+  const [userType,      setUserType]      = useState<string | null>(null);
+  const [userMenuOpen,  setUserMenuOpen]  = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
 
   const unread = notifications.filter(n => !n.read).length;
@@ -28,6 +30,8 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      const { data: prof } = await supabase.from("profiles").select("user_type").eq("id", user.id).single();
+      if (prof) setUserType(prof.user_type);
 
       const { data } = await supabase
         .from("notifications")
@@ -42,11 +46,11 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
       const channel = supabase
         .channel("notifications")
         .on("postgres_changes", {
-            event: "INSERT", schema: "public", table: "notifications",
-            filter: `user_id=eq.${user.id}`,
-          }, (payload: { new: Notification }) => {
-            setNotifications(prev => [payload.new as Notification, ...prev]);
-          })
+          event: "INSERT", schema: "public", table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        }, payload => {
+          setNotifications(prev => [payload.new as Notification, ...prev]);
+        })
         .subscribe();
 
       return () => { supabase.removeChannel(channel); };
@@ -159,10 +163,50 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
           <button onClick={() => router.back()} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 5, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>← Back</button>
         )}
 
-        {!userId && (
-          <button onClick={() => router.push("/register")} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 5, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
-            Get started
-          </button>
+        {!userId ? (
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => router.push("/signin")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>
+              Sign in
+            </button>
+            <button onClick={() => router.push("/register")} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+              Get started
+            </button>
+          </div>
+        ) : (
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setUserMenuOpen(v => !v)}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 20, padding: "5px 12px 5px 5px", cursor: "pointer" }}
+            >
+              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#D97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 700, color: "#fff", fontFamily: "sans-serif" }}>
+                ME
+              </div>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {userMenuOpen && (
+              <div style={{ position: "absolute", right: 0, top: 42, width: 180, background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 10, zIndex: 100, boxShadow: "0 4px 20px rgba(0,0,0,0.12)", overflow: "hidden" }}>
+                {userType === "host" && (
+                  <button onClick={() => { router.push("/dashboard"); setUserMenuOpen(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif", textAlign: "left" as const }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    Dashboard
+                  </button>
+                )}
+                <button onClick={() => { router.push(`/profile/${userId}`); setUserMenuOpen(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif", textAlign: "left" as const }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  My profile
+                </button>
+                <button onClick={() => { router.push("/rooms/create"); setUserMenuOpen(false); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif", textAlign: "left" as const }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Start a room
+                </button>
+                <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                <button onClick={async () => { await supabase.auth.signOut(); setUserId(null); setUserType(null); setUserMenuOpen(false); router.push("/"); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.82rem", color: "#EF4444", fontFamily: "sans-serif", textAlign: "left" as const }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </nav>
