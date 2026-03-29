@@ -21,6 +21,7 @@ const DEMO_USERS = [
   { name: "Chiedza Mutasa",   role: "Listener",             phone: "+263771111006", color: "#0891B2", desc: "University student" },
   { name: "Blessing Phiri",   role: "Listener",             phone: "+263771111007", color: "#65A30D", desc: "Retired teacher from Gweru" },
   { name: "Simba Chikowore",  role: "Listener",             phone: "+263771111008", color: "#EF4444", desc: "Youth entrepreneur" },
+  { name: "Grace Thompson",    role: "Host — Travel",        phone: "+263771111009", color: "#0891B2", desc: "Travel writer, Victoria Falls" },
 ];
 
 const INITIALS = (name: string) =>

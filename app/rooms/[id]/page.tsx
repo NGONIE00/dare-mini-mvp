@@ -91,6 +91,10 @@ export default function RoomPage() {
   const [mutedUsers,   setMutedUsers]   = useState<Set<string>>(new Set());
   const [loading,      setLoading]      = useState(true);
   const [ended,        setEnded]        = useState(false);
+  const [ticketGate,   setTicketGate]   = useState(false);
+  const [ticketPaying, setTicketPaying] = useState(false);
+  const [ticketMethod, setTicketMethod] = useState("");
+  const [ticketDone,   setTicketDone]   = useState(false);
   const [ending,       setEnding]       = useState(false);
   const [chatInput,    setChatInput]    = useState("");
   const [sending,      setSending]      = useState(false);
@@ -136,8 +140,12 @@ export default function RoomPage() {
       if (user) {
         const already = parts?.find((p: Participant) => p.user_id === user.id);
         if (!already) {
-          await supabase.from("room_participants").insert({ room_id: roomId, user_id: user.id, payment_status: "free" });
-          /* trigger sync_participant_count fires automatically */
+          if (roomData.is_ticketed && user?.id !== roomData.host_id) {
+            /* Show payment gate — don't insert participant yet */
+            setTicketGate(true);
+          } else {
+            await supabase.from("room_participants").insert({ room_id: roomId, user_id: user.id, payment_status: "free" });
+          }
         }
         const { data: fol } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
         if (fol) setFollowing(new Set(fol.map((f: { following_id: string }) => f.following_id)));
@@ -274,6 +282,22 @@ export default function RoomPage() {
   };
 
   const closeTip = () => { setTipOpen(false); setTipStep("amount"); setTipPayment(""); };
+
+  /* ── Pay ticket and enter room ── */
+  const payTicket = async () => {
+    if (!currentUser || !room || !ticketMethod || ticketPaying) return;
+    setTicketPaying(true);
+    await supabase.from("transactions").insert({
+      from_user_id: currentUser, to_user_id: room.host_id, room_id: roomId,
+      amount: room.ticket_price, transaction_type: "ticket",
+      status: "completed", reference: `ticket-${Date.now()}`,
+    });
+    await supabase.from("room_participants").insert({
+      room_id: roomId, user_id: currentUser, payment_status: "paid",
+    });
+    setTicketDone(true);
+    setTimeout(() => { setTicketGate(false); setTicketDone(false); setTicketPaying(false); setTicketMethod(""); }, 1500);
+  };
 
   if (loading) return (
     <div style={{ background: "var(--bg)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -775,6 +799,72 @@ export default function RoomPage() {
                 <button onClick={sendTip} disabled={!tipPayment || tipLoading}
                   style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 14, padding: "14px", fontSize: "1rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", opacity: !tipPayment ? 0.5 : 1, boxShadow: "0 4px 12px rgba(217,119,6,0.3)" }}>
                   {tipLoading ? "Processing..." : `Send $${parseFloat(tipAmount).toFixed(2)} via ${tipPayment || "..."}`}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TICKET GATE MODAL ── */}
+      {ticketGate && room?.is_ticketed && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "var(--bg)", borderRadius: 16, border: "0.5px solid var(--border)", width: "100%", maxWidth: 380, padding: "1.5rem" }}>
+            {ticketDone ? (
+              <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(5,150,105,0.1)", border: "1.5px solid rgba(5,150,105,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <p style={{ color: "#059669", fontFamily: "sans-serif", fontWeight: 700, fontSize: "1rem" }}>Payment confirmed!</p>
+                <p style={{ color: "var(--text3)", fontSize: "0.82rem", fontFamily: "sans-serif", marginTop: 4 }}>Entering room...</p>
+              </div>
+            ) : (
+              <>
+                {/* Header */}
+                <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
+                  <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>🎟️</div>
+                  <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.3rem" }}>Ticketed Room</h2>
+                  <p style={{ fontSize: "0.85rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.6 }}>{room.title}</p>
+                </div>
+
+                {/* Price */}
+                <div style={{ background: "rgba(217,119,6,0.08)", border: "0.5px solid rgba(217,119,6,0.25)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text3)", fontFamily: "sans-serif", textTransform: "uppercase", letterSpacing: "0.06em" }}>Entry fee</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 800, color: "#D97706", fontFamily: "sans-serif" }}>USD ${room.ticket_price.toFixed(2)}</div>
+                  </div>
+                  <div style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right" as const }}>
+                    ~85% goes<br/>to the host
+                  </div>
+                </div>
+
+                {/* Payment method */}
+                <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.6rem" }}>Pay via</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: "1.25rem" }}>
+                  {[
+                    { id: "EcoCash",  label: "EcoCash",  color: "#D97706" },
+                    { id: "Mukuru",   label: "Mukuru",   color: "#059669" },
+                    { id: "OneMoney", label: "OneMoney", color: "#3B82F6" },
+                    { id: "M-Pesa",   label: "M-Pesa",   color: "#22C55E" },
+                  ].map(m => (
+                    <button key={m.id} onClick={() => setTicketMethod(m.id)} style={{
+                      padding: "9px 10px", borderRadius: 9, cursor: "pointer", textAlign: "left" as const,
+                      background: ticketMethod === m.id ? "rgba(217,119,6,0.08)" : "var(--bg2)",
+                      border: `1.5px solid ${ticketMethod === m.id ? "#D97706" : "var(--border)"}`,
+                      display: "flex", alignItems: "center", gap: 7,
+                    }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: ticketMethod === m.id ? "#D97706" : "var(--text)", fontFamily: "sans-serif" }}>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <button onClick={payTicket} disabled={!ticketMethod || ticketPaying} style={{ width: "100%", background: ticketMethod ? "#D97706" : "var(--bg2)", color: ticketMethod ? "#fff" : "var(--text3)", border: "none", borderRadius: 12, padding: "13px", fontSize: "0.95rem", fontWeight: 700, cursor: ticketMethod && !ticketPaying ? "pointer" : "default", fontFamily: "sans-serif", marginBottom: "0.75rem", opacity: !ticketMethod ? 0.6 : 1 }}>
+                  {ticketPaying ? "Processing..." : `Pay USD $${room.ticket_price.toFixed(2)} & Enter`}
+                </button>
+
+                <button onClick={() => router.push("/rooms")} style={{ width: "100%", background: "none", border: "none", color: "var(--text3)", fontSize: "0.82rem", cursor: "pointer", fontFamily: "sans-serif" }}>
+                  ← Back to rooms
                 </button>
               </>
             )}
