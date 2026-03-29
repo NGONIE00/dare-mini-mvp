@@ -21,6 +21,10 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
   const [userId,        setUserId]        = useState<string | null>(null);
   const [userType,      setUserType]      = useState<string | null>(null);
   const [userMenuOpen,  setUserMenuOpen]  = useState(false);
+  const [deleteOpen,    setDeleteOpen]    = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting,      setDeleting]      = useState(false);
+  const [deleteError,   setDeleteError]   = useState("");
   const bellRef = useRef<HTMLDivElement>(null);
 
   const unread = notifications.filter(n => !n.read).length;
@@ -93,6 +97,7 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
   };
 
   return (
+    <>
     <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.9rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
       {/* Brand */}
       <div style={{ cursor: "pointer" }} onClick={() => router.push("/")}>
@@ -204,11 +209,76 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   Sign out
                 </button>
+                <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
+                <button onClick={() => { setUserMenuOpen(false); setDeleteOpen(true); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "left" as const }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  Delete account
+                </button>
               </div>
             )}
           </div>
         )}
       </div>
     </nav>
+
+      {/* ── DELETE ACCOUNT MODAL ── */}
+      {deleteOpen && (
+        <div
+          onClick={e => { if ((e.target as HTMLElement).id === "del-overlay") { setDeleteOpen(false); setDeleteConfirm(""); setDeleteError(""); } }}
+          id="del-overlay"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+        >
+          <div style={{ background: "var(--bg)", borderRadius: 14, border: "0.5px solid var(--border)", width: "100%", maxWidth: 380, padding: "1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1rem" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Delete account</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>Permanent — cannot be undone</div>
+              </div>
+            </div>
+
+            <div style={{ background: "rgba(239,68,68,0.06)", border: "0.5px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1.25rem" }}>
+              <p style={{ fontSize: "0.8rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.65, margin: "0 0 0.4rem" }}>This will permanently delete:</p>
+              <ul style={{ fontSize: "0.78rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.8, margin: 0, paddingLeft: "1.1rem" }}>
+                <li>Your profile and personal data</li>
+                <li>Your messages and chat history</li>
+                <li>Your follows and notifications</li>
+                <li>Your wallet and transaction history</li>
+              </ul>
+            </div>
+
+            <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.4rem" }}>
+              Type <strong style={{ color: "#EF4444" }}>delete</strong> to confirm
+            </label>
+            <input
+              value={deleteConfirm}
+              onChange={e => { setDeleteConfirm(e.target.value); setDeleteError(""); }}
+              placeholder="delete"
+              style={{ width: "100%", background: "var(--bg2)", border: `1px solid ${deleteError ? "rgba(239,68,68,0.5)" : "var(--border2)"}`, borderRadius: 8, padding: "10px 12px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", boxSizing: "border-box" as const, marginBottom: "0.5rem" }}
+            />
+            {deleteError && <p style={{ fontSize: "0.75rem", color: "#EF4444", fontFamily: "sans-serif", marginBottom: "0.75rem" }}>{deleteError}</p>}
+
+            <div style={{ display: "flex", gap: 8, marginTop: "0.75rem" }}>
+              <button
+                onClick={() => { setDeleteOpen(false); setDeleteConfirm(""); setDeleteError(""); }}
+                style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 8, padding: "10px", fontSize: "0.88rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || deleteConfirm.toLowerCase() !== "delete"}
+                style={{ flex: 1, background: deleteConfirm.toLowerCase() === "delete" ? "#EF4444" : "var(--bg2)", color: deleteConfirm.toLowerCase() === "delete" ? "#fff" : "var(--text3)", border: "none", borderRadius: 8, padding: "10px", fontSize: "0.88rem", fontWeight: 700, cursor: deleteConfirm.toLowerCase() === "delete" && !deleting ? "pointer" : "default", fontFamily: "sans-serif", transition: "background 0.2s" }}
+              >
+                {deleting ? "Deleting..." : "Delete account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </nav>
+    </>
   );
 }
