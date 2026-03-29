@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useVoice, uuidToUid, QUALITY_PRESETS, type QualityKey } from "@/hooks/useVoice";
 
 /* ── types ── */
 type Room = {
@@ -86,7 +87,22 @@ export default function RoomPage() {
   const [currentUser,  setCurrentUser]  = useState<string | null>(null);
   const [currentName,  setCurrentName]  = useState("You");
   const [isHost,       setIsHost]       = useState(false);
-  const [myHandRaised, setMyHandRaised] = useState(false);
+  const [myHandRaised,  setMyHandRaised]  = useState(false);
+  const [qualityOpen,   setQualityOpen]   = useState(false);
+
+  /* ── Voice ── */
+  const voice = useVoice({
+    roomId,
+    userId:   currentUser,
+    isHost,
+    autoJoin: false, // manual join via button
+    onMuteCmd: (targetUid, muted) => {
+      // Remote mute command received from host
+      if (targetUid === (currentUser ? uuidToUid(currentUser) : -1)) {
+        if (muted && !voice.muted) voice.toggleMute();
+      }
+    },
+  });
   const [following,    setFollowing]    = useState<Set<string>>(new Set());
   const [mutedUsers,   setMutedUsers]   = useState<Set<string>>(new Set());
   const [loading,      setLoading]      = useState(true);
@@ -392,15 +408,76 @@ export default function RoomPage() {
     <div style={{
       display: "flex", alignItems: "center", gap: compact ? 6 : 8,
       padding: compact ? "0.75rem 1rem" : "0.85rem 1.25rem",
-      borderTop: "1px solid var(--divider)",
-      background: "var(--bg)",
+      borderTop: "1px solid var(--divider)", background: "var(--bg)",
+      flexWrap: "wrap" as const,
     }}>
-      {/* Raise hand — only when signed in + not host + not ended */}
+      {/* Voice join / mute */}
+      {!ended && currentUser && (
+        voice.connected ? (
+          <button onClick={voice.toggleMute} style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: compact ? "9px 14px" : "10px 16px", borderRadius: 24,
+            cursor: "pointer", fontFamily: "sans-serif",
+            fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 700,
+            background: voice.muted ? "var(--bg2)" : "rgba(5,150,105,0.12)",
+            border: `1.5px solid ${voice.muted ? "var(--border2)" : "#059669"}`,
+            color: voice.muted ? "var(--text2)" : "#059669",
+            transition: "all 0.2s", flexShrink: 0,
+          }}>
+            {voice.muted
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            }
+            {voice.muted ? "Unmute" : "Mute"}
+          </button>
+        ) : (
+          <button onClick={() => voice.join()} disabled={voice.connecting} style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: compact ? "9px 14px" : "10px 16px", borderRadius: 24,
+            cursor: voice.connecting ? "default" : "pointer", fontFamily: "sans-serif",
+            fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 600, flexShrink: 0,
+            background: "rgba(5,150,105,0.1)", border: "1.5px solid #059669", color: "#059669",
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            {voice.connecting ? "Connecting..." : "Join voice"}
+          </button>
+        )
+      )}
+
+      {/* Quality picker */}
+      {voice.connected && (
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setQualityOpen(v => !v)} style={{
+            display: "flex", alignItems: "center", gap: 5, padding: compact ? "9px 10px" : "10px 12px",
+            borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif", fontSize: "0.78rem",
+            fontWeight: 600, background: "var(--bg2)", border: "1.5px solid var(--border2)",
+            color: "var(--text2)", flexShrink: 0,
+          }}>
+            📶 {voice.quality}
+          </button>
+          {qualityOpen && (
+            <div style={{ position: "absolute", bottom: "110%", left: 0, background: "var(--bg)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden", zIndex: 60, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 150 }}>
+              {(Object.entries(QUALITY_PRESETS) as [QualityKey, { label: string; desc: string; encoderConfig: string }][]).map(([key, preset]) => (
+                <button key={key} onClick={async () => { await voice.setQuality(key); setQualityOpen(false); }} style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "9px 12px", background: voice.quality === key ? "rgba(217,119,6,0.08)" : "none",
+                  border: "none", cursor: "pointer", fontFamily: "sans-serif",
+                }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: voice.quality === key ? "#D97706" : "var(--text)" }}>{preset.label}</span>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text3)" }}>{preset.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Raise hand */}
       {!isHost && !ended && currentUser && (
         <button onClick={toggleHand} style={{
           display: "flex", alignItems: "center", gap: 6,
-          padding: compact ? "9px 14px" : "10px 16px",
-          borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
+          padding: compact ? "9px 14px" : "10px 16px", borderRadius: 24,
+          cursor: "pointer", fontFamily: "sans-serif",
           fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 600,
           background: myHandRaised ? "rgba(217,119,6,0.1)" : "var(--bg2)",
           border: `1.5px solid ${myHandRaised ? "#D97706" : "var(--border2)"}`,
@@ -412,11 +489,11 @@ export default function RoomPage() {
         </button>
       )}
 
-      {/* Chat toggle */}
+      {/* Chat */}
       <button onClick={() => setChatOpen(v => !v)} style={{
         display: "flex", alignItems: "center", gap: 6,
-        padding: compact ? "9px 14px" : "10px 16px",
-        borderRadius: 24, cursor: "pointer", fontFamily: "sans-serif",
+        padding: compact ? "9px 14px" : "10px 16px", borderRadius: 24,
+        cursor: "pointer", fontFamily: "sans-serif",
         fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 600,
         background: chatOpen ? "rgba(217,119,6,0.1)" : "var(--bg2)",
         border: `1.5px solid ${chatOpen ? "#D97706" : "var(--border2)"}`,
@@ -427,34 +504,29 @@ export default function RoomPage() {
         Chat {messages.length > 0 ? messages.length : ""}
       </button>
 
-      {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Tip — always visible when room is not ended and user is not host.
-          If not signed in, redirect to register. */}
+      {/* Tip */}
       {!isHost && !ended && (
-        <button
-          onClick={() => currentUser ? setTipOpen(true) : router.push("/register")}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: compact ? "9px 16px" : "10px 18px",
-            borderRadius: 24, border: "none", cursor: "pointer", fontFamily: "sans-serif",
-            fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 700,
-            background: "#D97706", color: "#fff",
-            boxShadow: "0 2px 10px rgba(217,119,6,0.3)",
-            flexShrink: 0,
-          }}
-        >
+        <button onClick={() => currentUser ? setTipOpen(true) : router.push("/register")} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: compact ? "9px 16px" : "10px 18px", borderRadius: 24,
+          border: "none", cursor: "pointer", fontFamily: "sans-serif",
+          fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 700,
+          background: "#D97706", color: "#fff",
+          boxShadow: "0 2px 10px rgba(217,119,6,0.3)", flexShrink: 0,
+        }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           Tip
         </button>
       )}
 
-      {/* Host: end room */}
+      {/* End room */}
       {isHost && !ended && (
         <button onClick={endRoom} disabled={ending} style={{
-          padding: compact ? "9px 16px" : "10px 18px", borderRadius: 24, fontFamily: "sans-serif",
-          fontSize: compact ? "0.82rem" : "0.85rem", fontWeight: 700, cursor: "pointer",
+          padding: compact ? "9px 16px" : "10px 18px", borderRadius: 24,
+          fontFamily: "sans-serif", fontSize: compact ? "0.82rem" : "0.85rem",
+          fontWeight: 700, cursor: "pointer",
           background: "rgba(239,68,68,0.1)", color: "#EF4444",
           border: "1.5px solid rgba(239,68,68,0.3)", flexShrink: 0,
         }}>
@@ -462,7 +534,12 @@ export default function RoomPage() {
         </button>
       )}
 
-
+      {/* Voice error */}
+      {voice.error && (
+        <div style={{ width: "100%", marginTop: 4, background: "rgba(239,68,68,0.08)", border: "0.5px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "6px 12px", fontSize: "0.75rem", color: "#EF4444", fontFamily: "sans-serif" }}>
+          Voice error: {voice.error}
+        </div>
+      )}
     </div>
   );
 
@@ -634,7 +711,7 @@ export default function RoomPage() {
                         <div key={p.id} onClick={() => setSelectedUser(isSelected ? null : p)}
                           style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer", flexShrink: 0, minWidth: 60 }}>
                           <div style={{ position: "relative" }}>
-                            <Av id={prof.id} name={prof.display_name} url={prof.avatar_url} size={52} border={isSelected} />
+                            <Av id={prof.id} name={prof.display_name} url={prof.avatar_url} size={52} border={isSelected} speaking={voice.speaking[uuidToUid(prof.id)]} />
                             {mutedUsers.has(p.user_id) && (
                               <div style={{ position: "absolute", bottom: 0, right: 0, width: 16, height: 16, borderRadius: "50%", background: "#EF4444", border: "2px solid var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></svg>
@@ -673,7 +750,14 @@ export default function RoomPage() {
                           </button>
                         )}
                         {isHost && selectedUser.user_id !== currentUser && (
-                          <button onClick={() => { setMutedUsers(prev => { const n = new Set(prev); n.has(selectedUser.user_id) ? n.delete(selectedUser.user_id) : n.add(selectedUser.user_id); return n; }); }} style={{ background: mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.1)" : "var(--bg)", border: `0.5px solid ${mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.3)" : "var(--border2)"}`, borderRadius: 20, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: mutedUsers.has(selectedUser.user_id) ? "#EF4444" : "var(--text2)", fontWeight: 600 }}>
+                          <button onClick={() => {
+  setMutedUsers(prev => { const n = new Set(prev); n.has(selectedUser.user_id) ? n.delete(selectedUser.user_id) : n.add(selectedUser.user_id); return n; });
+  if (selectedUser.profiles) {
+    const targetUid = uuidToUid(selectedUser.profiles.id);
+    const willBeMuted = !mutedUsers.has(selectedUser.user_id);
+    voice.sendMuteCommand(targetUid, willBeMuted);
+  }
+}} style={{ background: mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.1)" : "var(--bg)", border: `0.5px solid ${mutedUsers.has(selectedUser.user_id) ? "rgba(239,68,68,0.3)" : "var(--border2)"}`, borderRadius: 20, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: mutedUsers.has(selectedUser.user_id) ? "#EF4444" : "var(--text2)", fontWeight: 600 }}>
                             {mutedUsers.has(selectedUser.user_id) ? "Unmute" : "Mute"}
                           </button>
                         )}
