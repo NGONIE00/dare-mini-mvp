@@ -134,11 +134,11 @@ export default function Register() {
       const fp = fullPhone();
       /* Supabase doesn't support SMS OTP on free plan directly,
          so we use the phone-as-email prototype convention:
-         <digits>@dare.prototype — e.g. 2637111111@dare.prototype
+         <digits>@dare.app — e.g. 2637111111@dare.app
          Production: swap for supabase.auth.signInWithOtp({ phone: fp }) + Twilio */
       const digits = fp.replace(/\D/g, "");
-      const fakeEmail = `${digits}@dare.prototype`;
-      const password  = `Dare${digits}!`;
+      const fakeEmail = `${digits}@dare.app`;
+      const password  = `Dare${digits}#Zw`;
 
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: fakeEmail, password,

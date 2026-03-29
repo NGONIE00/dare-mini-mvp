@@ -64,8 +64,8 @@ export default function SignIn() {
     try {
       const fp = fullPhone();
       const allDigits = fp.replace(/\D/g, "");
-      const fakeEmail = `${allDigits}@dare.prototype`;
-      const password  = `Dare${allDigits}!`;
+      const fakeEmail = `${allDigits}@dare.app`;
+      const password  = `Dare${allDigits}#Zw`;
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: fakeEmail, password,
