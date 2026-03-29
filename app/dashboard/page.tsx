@@ -15,9 +15,9 @@ type Transaction = {
   status: string;
   created_at: string;
   from_user_id: string;
+  to_user_id: string;
   room_id: string | null;
   rooms?: { title: string } | null;
-  sender?: { display_name: string } | null;
 };
 type Room = {
   id: string;
@@ -94,18 +94,44 @@ export default function Dashboard() {
   }, []);
 
   /* ── derived stats ── */
-  const tips          = transactions.filter(t => t.transaction_type === "tip" && t.from_user_id !== userId);
-  const withdrawals   = transactions.filter(t => t.transaction_type === "withdrawal");
-  const totalEarned   = tips.reduce((s, t) => s + t.amount, 0);
-  const totalWithdrawn = withdrawals.reduce((s, t) => s + t.amount, 0);
+  /* Tips = money received by this host from others */
+  const tips = transactions.filter(t =>
+    t.transaction_type === "tip" &&
+    t.to_user_id === userId
+  );
+  /* Ticket sales = ticket payments received by this host */
+  const ticketSales = transactions.filter(t =>
+    t.transaction_type === "ticket" &&
+    t.to_user_id === userId
+  );
+  /* All earnings = tips + ticket sales */
+  const allEarnings = [...tips, ...ticketSales];
+  const totalEarned = allEarnings.reduce((s, t) => s + Number(t.amount), 0);
+
+  /* Withdrawals = money this host has withdrawn */
+  const withdrawals   = transactions.filter(t =>
+    t.transaction_type === "withdrawal" &&
+    t.from_user_id === userId
+  );
+  const totalWithdrawn = withdrawals.reduce((s, t) => s + Number(t.amount), 0);
+
+  /* Wallet balance = totalEarned - totalWithdrawn
+     (wallet table is source of truth after trigger runs, but we also
+      derive it so the dashboard stays consistent with the transaction list) */
+  const derivedBalance = Math.max(totalEarned - totalWithdrawn, 0);
+  /* Use the wallet table balance if it matches (post-trigger), else use derived */
+  const displayBalance = Math.abs((wallet?.balance ?? 0) - derivedBalance) < 0.01
+    ? (wallet?.balance ?? 0)
+    : derivedBalance;
+
   const totalListeners = rooms.reduce((s, r) => s + (r.participant_count ?? 0), 0);
 
   /* tips per room */
-  const tipsByRoom: Record<string, { title: string; total: number; count: number }> = {};
-  tips.forEach(t => {
+  const tipsByRoom: Record<string, { title: string; total: number; count: number; type: string }> = {};
+  allEarnings.forEach(t => {
     const key = t.room_id ?? "unknown";
-    if (!tipsByRoom[key]) tipsByRoom[key] = { title: t.rooms?.title ?? "Unknown room", total: 0, count: 0 };
-    tipsByRoom[key].total += t.amount;
+    if (!tipsByRoom[key]) tipsByRoom[key] = { title: t.rooms?.title ?? "Unknown room", total: 0, count: 0, type: t.transaction_type };
+    tipsByRoom[key].total += Number(t.amount);
     tipsByRoom[key].count += 1;
   });
   const tipRooms = Object.values(tipsByRoom).sort((a, b) => b.total - a.total);
@@ -193,9 +219,9 @@ export default function Dashboard() {
           {/* ── METRIC CARDS ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: "2rem" }}>
             {[
-              { label: "Wallet balance", value: `$${fmt(wallet?.balance ?? 0)}`, sub: wallet?.currency ?? "USD", accent: true },
-              { label: "Total earned",   value: `$${fmt(totalEarned)}`,          sub: "from tips" },
-              { label: "Total withdrawn", value: `$${fmt(totalWithdrawn)}`,      sub: "paid out" },
+              { label: "Wallet balance",  value: `$${fmt(displayBalance)}`,  sub: wallet?.currency ?? "USD", accent: true },
+              { label: "Total earned",    value: `$${fmt(totalEarned)}`,    sub: `${tips.length} tip${tips.length !== 1 ? "s" : ""} · ${ticketSales.length} ticket${ticketSales.length !== 1 ? "s" : ""}` },
+              { label: "Total withdrawn", value: `$${fmt(totalWithdrawn)}`, sub: "paid out" },
               { label: "Sessions hosted", value: rooms.length.toString(),        sub: "rooms" },
               { label: "Total listeners", value: totalListeners.toString(),      sub: "across all rooms" },
               { label: "Followers",       value: (profile?.follower_count ?? 0).toString(), sub: "following you" },
@@ -222,17 +248,17 @@ export default function Dashboard() {
               {/* Recent tips */}
               <div style={card}>
                 <span style={secLabel}>Recent tips</span>
-                {tips.length === 0 ? (
-                  <p style={{ fontSize: "0.82rem", color: "var(--text3)", fontFamily: "sans-serif" }}>No tips received yet.</p>
+                {allEarnings.length === 0 ? (
+                  <p style={{ fontSize: "0.82rem", color: "var(--text3)", fontFamily: "sans-serif" }}>No earnings yet.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                    {tips.slice(0, 5).map(t => (
+                    {allEarnings.slice(0, 5).map(t => (
                       <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
                           <div style={{ fontSize: "0.82rem", color: "var(--text)", fontFamily: "sans-serif" }}>{t.rooms?.title ?? "Room"}</div>
-                          <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{fmtDate(t.created_at)}</div>
+                          <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{fmtDate(t.created_at)} · {t.transaction_type === "ticket" ? "🎟️ Ticket" : "💛 Tip"}</div>
                         </div>
-                        <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#059669", fontFamily: "sans-serif" }}>+${fmt(t.amount)}</span>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#059669", fontFamily: "sans-serif" }}>+${fmt(Number(t.amount))}</span>
                       </div>
                     ))}
                   </div>
@@ -344,11 +370,11 @@ export default function Dashboard() {
               {/* All tip transactions */}
               <div style={card}>
                 <span style={secLabel}>All tip transactions</span>
-                {tips.length === 0 ? (
-                  <p style={{ fontSize: "0.82rem", color: "var(--text3)", fontFamily: "sans-serif" }}>No tips yet.</p>
+                {allEarnings.length === 0 ? (
+                  <p style={{ fontSize: "0.82rem", color: "var(--text3)", fontFamily: "sans-serif" }}>No earnings yet.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    {tips.map(t => (
+                    {allEarnings.map(t => (
                       <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.65rem 0", borderBottom: "0.5px solid var(--border)" }}>
                         <div>
                           <div style={{ fontSize: "0.8rem", color: "var(--text)", fontFamily: "sans-serif" }}>{t.rooms?.title ?? "Room"}</div>
