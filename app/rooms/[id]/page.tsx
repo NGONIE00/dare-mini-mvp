@@ -180,9 +180,9 @@ export default function RoomPage() {
       })
       .subscribe();
 
-    /* Realtime: participant joins/leaves */
-    const partCh = supabase
-      .channel(`room-parts-${roomId}`)
+    /* Realtime: participant joins */
+    const partJoinCh = supabase
+      .channel(`room-parts-join-${roomId}`)
       .on("postgres_changes", {
         event: "INSERT", schema: "public", table: "room_participants",
         filter: `room_id=eq.${roomId}`,
@@ -198,19 +198,13 @@ export default function RoomPage() {
           );
         }
       })
-      .on("postgres_changes", {
-        event: "DELETE", schema: "public", table: "room_participants",
-        filter: `room_id=eq.${roomId}`,
-      }, (payload: { old: { user_id: string } }) => {
-        setParticipants(prev => prev.filter(p => p.user_id !== payload.old.user_id));
-      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(msgCh);
       supabase.removeChannel(handCh);
       supabase.removeChannel(roomCh);
-      supabase.removeChannel(partCh);
+      supabase.removeChannel(partJoinCh);
     };
   }, [roomId]);
 
