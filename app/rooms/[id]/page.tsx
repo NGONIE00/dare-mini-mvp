@@ -112,6 +112,11 @@ export default function RoomPage() {
   const [ticketMethod, setTicketMethod] = useState("");
   const [ticketDone,   setTicketDone]   = useState(false);
   const [ending,       setEnding]       = useState(false);
+  const [isRecording,  setIsRecording]  = useState(false);
+  const [recUploading, setRecUploading] = useState(false);
+  const [recDone,      setRecDone]      = useState(false);
+  const mediaRecRef    = useRef<MediaRecorder | null>(null);
+  const recChunksRef   = useRef<Blob[]>([]);
   const [chatInput,    setChatInput]    = useState("");
   const [sending,      setSending]      = useState(false);
   const [chatOpen,     setChatOpen]     = useState(false);
