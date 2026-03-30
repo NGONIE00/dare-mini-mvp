@@ -95,7 +95,7 @@ export function useVoice({ roomId, userId, isHost, autoJoin, onMuteCmd }: UseVoi
       const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID;
       if (!appId) throw new Error("NEXT_PUBLIC_AGORA_APP_ID not set");
 
-      const client = AgoraRTC.createClient({ mode: "live", codec: "opus" });
+      const client = AgoraRTC.createClient({ mode: "live", codec: "vp8" });
       clientRef.current = client;
 
       const uid   = uuidToUid(userId);
