@@ -299,6 +299,37 @@ export default function RoomPage() {
 
   const closeTip = () => { setTipOpen(false); setTipStep("amount"); setTipPayment(""); };
 
+  /* ── Recording ── */
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      recChunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) recChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        setRecUploading(true);
+        const blob = new Blob(recChunksRef.current, { type: "audio/webm" });
+        const path = `recordings/${roomId}/${Date.now()}.webm`;
+        await supabase.storage.from("recordings").upload(path, blob, { upsert: true });
+        const { data: { publicUrl } } = supabase.storage.from("recordings").getPublicUrl(path);
+        await supabase.from("rooms").update({ recording_url: publicUrl }).eq("id", roomId);
+        setRecUploading(false);
+        setRecDone(true);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start(5000); // collect every 5s
+      mediaRecRef.current = mr;
+      setIsRecording(true);
+    } catch { alert("Microphone access required for recording"); }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecRef.current && isRecording) {
+      mediaRecRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
   /* ── Pay ticket and enter room ── */
   const payTicket = async () => {
     if (!currentUser || !room || !ticketMethod || ticketPaying) return;
@@ -771,6 +802,22 @@ export default function RoomPage() {
 
             {/* Bottom bar — always at bottom of main column */}
             <div style={{ marginTop: "auto" }}>
+              {/* Recording indicator — host only */}
+              {isHost && room?.is_recording && !ended && (
+                <div style={{ margin: "0 0 0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.65rem 1rem", background: isRecording ? "rgba(239,68,68,0.08)" : "var(--bg2)", border: `0.5px solid ${isRecording ? "rgba(239,68,68,0.3)" : "var(--border)"}`, borderRadius: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: isRecording ? "#EF4444" : "var(--text3)", animation: isRecording ? "livepulse 1s infinite" : "none" }} />
+                    <span style={{ fontSize: "0.82rem", fontFamily: "sans-serif", color: isRecording ? "#EF4444" : "var(--text3)", fontWeight: 600 }}>
+                      {recUploading ? "Uploading..." : recDone ? "Recording saved ✓" : isRecording ? "Recording live..." : "Recording enabled — tap Start"}
+                    </span>
+                  </div>
+                  {!recDone && !recUploading && (
+                    <button onClick={isRecording ? stopRecording : startRecording} style={{ background: isRecording ? "rgba(239,68,68,0.1)" : "rgba(5,150,105,0.1)", color: isRecording ? "#EF4444" : "#059669", border: `0.5px solid ${isRecording ? "rgba(239,68,68,0.3)" : "rgba(5,150,105,0.3)"}`, borderRadius: 6, padding: "4px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+                      {isRecording ? "Stop" : "Start"}
+                    </button>
+                  )}
+                </div>
+              )}
               <BottomBar compact={false} />
             </div>
           </div>

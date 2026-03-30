@@ -68,17 +68,18 @@ export default function CreateRoom() {
 
       const { data, error } = await supabase.from("rooms").insert({
         host_id:           user.id,
-        title:             title.trim(),
-        description:       description.trim(),
+        title:             title.trim().replace(/[<>'"]/g, ""),
+        description:       description.trim().replace(/[<>'"]/g, ""),
         category:          category.toLowerCase(),
         language:          languages[0]?.toLowerCase() ?? "english",
         scheduled_at:      new Date(`${date}T${time}`).toISOString(),
         duration_minutes:  durationToMinutes(duration),
-        capacity:          capacity ? parseInt(capacity) : 10000,
+        capacity:          capacity ? Math.max(2, Math.min(parseInt(capacity), 100000)) : 10000,
         is_ticketed:       ticketed,
-        ticket_price:      ticketed ? parseFloat(ticketPrice) : 0,
+        ticket_price:      ticketed ? Math.max(0.5, parseFloat(ticketPrice)) : 0,
         status:            "scheduled",
         participant_count: 0,
+        is_recording:      recorded,
       }).select().single();
 
       if (error) throw error;
