@@ -27,7 +27,9 @@ export default function Rooms() {
   const router  = useRouter();
   const [rooms,   setRooms]   = useState<Room[]>([]);
   const [filter,  setFilter]  = useState("All");
-  const [loading, setLoading] = useState(true);
+  const [loading,   setLoading]   = useState(true);
+  const [aiRecs,    setAiRecs]    = useState<string[]>([]);
+  const [recsLoaded,setRecsLoaded]= useState(false);
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -43,6 +45,34 @@ export default function Rooms() {
       if (error) console.error("Rooms fetch error:", error.message, error.code);
       if (data) setRooms(data);
       setLoading(false);
+
+      /* AI recommendations — fetch user profile for personalisation */
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && data && data.length > 0) {
+        const { data: prof } = await supabase.from("profiles").select("user_type").eq("id", user.id).single();
+        const { data: follows } = await supabase.from("follows").select("following_id").eq("follower_id", user.id).limit(10);
+        const { data: recentParts } = await supabase.from("room_participants").select("room_id").eq("user_id", user.id).order("joined_at", { ascending: false }).limit(5);
+
+        try {
+          const res = await fetch("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              feature: "recommend_rooms",
+              payload: {
+                user_type: prof?.user_type ?? "listener",
+                followed_categories: [],
+                recent_rooms: (recentParts ?? []).map((r: { room_id: string }) => r.room_id),
+                all_rooms: data.map(r => ({ id: r.id, title: r.title, category: r.category, status: r.status, participant_count: r.participant_count })),
+              },
+            }),
+          });
+          const { result } = await res.json();
+          const ids: string[] = JSON.parse(result);
+          setAiRecs(ids);
+          setRecsLoaded(true);
+        } catch { /* silent */ }
+      }
     };
     fetchRooms();
 
@@ -108,6 +138,31 @@ export default function Rooms() {
               }}>{f}</button>
             ))}
           </div>
+
+          {/* ── AI Recommended ── */}
+          {recsLoaded && aiRecs.length > 0 && (
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: "0.75rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#D97706", fontFamily: "sans-serif" }}>✨ Recommended for you</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                {rooms.filter(r => aiRecs.includes(r.id)).slice(0, 3).map(room => (
+                  <div key={room.id} onClick={() => router.push(`/rooms/${room.id}`)}
+                    style={{ background: "rgba(217,119,6,0.04)", border: "1px solid rgba(217,119,6,0.2)", borderRadius: 10, padding: "0.9rem 1.25rem", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "#D97706")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(217,119,6,0.2)")}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{room.title}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text3)", fontFamily: "sans-serif", marginTop: 2 }}>{room.profiles?.display_name} · {room.participant_count} listening</div>
+                    </div>
+                    <span style={{ background: room.status === "live" ? "rgba(5,150,105,0.12)" : "rgba(217,119,6,0.12)", color: room.status === "live" ? "#059669" : "#D97706", border: `0.5px solid ${room.status === "live" ? "rgba(5,150,105,0.3)" : "rgba(217,119,6,0.3)"}`, borderRadius: 100, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 600, whiteSpace: "nowrap" as const, fontFamily: "sans-serif", flexShrink: 0 }}>
+                      {room.status === "live" ? "Live" : "Soon"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Room list */}
           {loading ? (

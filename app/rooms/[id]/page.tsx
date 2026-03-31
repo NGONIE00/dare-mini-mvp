@@ -84,6 +84,11 @@ export default function RoomPage() {
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [handQueue,    setHandQueue]    = useState<HandRaise[]>([]);
+  const [handToast,    setHandToast]    = useState<HandRaise | null>(null);
+  const [aiSummary,    setAiSummary]    = useState("");
+  const [aiLoading,    setAiLoading]    = useState(false);
+  const [aiAssist,     setAiAssist]     = useState("");
+  const [assistTarget, setAssistTarget] = useState("");
   const [currentUser,  setCurrentUser]  = useState<string | null>(null);
   const [currentName,  setCurrentName]  = useState("You");
   const [isHost,       setIsHost]       = useState(false);
@@ -172,6 +177,10 @@ export default function RoomPage() {
         if (fol) setFollowing(new Set(fol.map((f: { following_id: string }) => f.following_id)));
       }
       setLoading(false);
+      // Request browser notification permission for host
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
     };
     init();
   }, [roomId]);
@@ -188,9 +197,18 @@ export default function RoomPage() {
     const handCh = supabase.channel(`hands-${roomId}`)
       .on("broadcast", { event: "hand_raise" }, ({ payload }: { payload: HandRaise }) => {
         setHandQueue(prev => prev.find(h => h.user_id === payload.user_id) ? prev : [...prev, payload]);
+        // Show toast notification to host
+        if (isHost) {
+          setHandToast(payload);
+          // Browser notification if permitted
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            new Notification("✋ Hand raised", { body: `${payload.display_name} wants to speak`, icon: "/favicon.ico" });
+          }
+        }
       })
       .on("broadcast", { event: "hand_lower" }, ({ payload }: { payload: { user_id: string } }) => {
         setHandQueue(prev => prev.filter(h => h.user_id !== payload.user_id));
+        setHandToast(prev => prev?.user_id === payload.user_id ? null : prev);
       })
       .subscribe();
     /* Realtime: room status + participant count */
@@ -245,7 +263,26 @@ export default function RoomPage() {
   const sendMessage = async () => {
     if (!chatInput.trim() || !currentUser || sending) return;
     setSending(true);
-    const text = chatInput.trim(); setChatInput("");
+    const text = chatInput.trim();
+    setChatInput("");
+
+    /* Content moderation — silent check before sending */
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature: "moderate_message", payload: { message: text } }),
+      });
+      const { result } = await res.json();
+      const parsed = JSON.parse(result);
+      if (!parsed.safe) {
+        setSending(false);
+        setChatInput(text); // restore so user can edit
+        alert(`Message not sent: ${parsed.reason}`);
+        return;
+      }
+    } catch { /* if moderation fails, allow through */ }
+
     await supabase.from("messages").insert({ room_id: roomId, user_id: currentUser, message: text });
     setSending(false);
     inputRef.current?.focus();
@@ -333,6 +370,40 @@ export default function RoomPage() {
       mediaRecRef.current.stop();
       setIsRecording(false);
     }
+  };
+
+  /* ── AI helpers ── */
+  const callAI = async (feature: string, payload: Record<string, unknown>) => {
+    const res = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feature, payload }),
+    });
+    if (!res.ok) throw new Error("AI request failed");
+    const { result } = await res.json();
+    return result as string;
+  };
+
+  const generateSummary = async () => {
+    if (!room || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const msgData = messages.map(m => ({ display_name: m.profiles?.display_name ?? "User", message: m.message }));
+      const summary = await callAI("room_summary", { title: room.title, messages: msgData, participant_count: participants.length });
+      setAiSummary(summary);
+    } catch { setAiSummary("Could not generate summary."); }
+    finally { setAiLoading(false); }
+  };
+
+  const getHostAssist = async (question: string) => {
+    if (!room || aiLoading) return;
+    setAssistTarget(question);
+    setAiLoading(true);
+    try {
+      const suggestion = await callAI("host_assist", { question, room_title: room.title, category: room.category });
+      setAiAssist(suggestion);
+    } catch { setAiAssist("Could not generate suggestion."); }
+    finally { setAiLoading(false); }
   };
 
   /* ── Pay ticket and enter room ── */
@@ -1008,8 +1079,81 @@ export default function RoomPage() {
         </div>
       )}
 
+      {/* ── HAND RAISE TOAST (host only) ── */}
+      {handToast && isHost && (
+        <div style={{ position: "fixed", top: 72, right: 16, zIndex: 150, background: "var(--bg)", border: "1.5px solid #D97706", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", maxWidth: 300, animation: "slideIn 0.3s ease" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: "0.75rem" }}>
+            <span style={{ fontSize: "1.4rem" }}>✋</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{handToast.display_name}</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text3)", fontFamily: "sans-serif" }}>wants to speak</div>
+            </div>
+            <button onClick={() => setHandToast(null)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: "1rem", flexShrink: 0 }}>×</button>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => {
+              setHandQueue(prev => prev.filter(h => h.user_id !== handToast.user_id));
+              voice.sendMuteCommand && voice.sendMuteCommand(-1, false); // signal allow
+              setHandToast(null);
+            }} style={{ flex: 1, background: "rgba(5,150,105,0.12)", color: "#059669", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 8, padding: "8px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+              ✓ Allow
+            </button>
+            <button onClick={() => {
+              setHandQueue(prev => prev.filter(h => h.user_id !== handToast.user_id));
+              setHandToast(null);
+            }} style={{ flex: 1, background: "rgba(239,68,68,0.08)", color: "#EF4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "8px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+              ✗ Deny
+            </button>
+          </div>
+          {/* AI assist — suggest response to last question */}
+          {isHost && messages.length > 0 && (
+            <button onClick={() => {
+              const lastMsg = messages[messages.length - 1];
+              getHostAssist(lastMsg.message);
+            }} style={{ width: "100%", marginTop: 8, background: "rgba(217,119,6,0.08)", color: "#D97706", border: "1px solid rgba(217,119,6,0.2)", borderRadius: 8, padding: "6px", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>
+              ✨ AI suggest response
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── AI ASSIST PANEL ── */}
+      {aiAssist && (
+        <div style={{ position: "fixed", bottom: 90, right: 16, zIndex: 140, background: "var(--bg)", border: "1.5px solid rgba(217,119,6,0.4)", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 8px 32px rgba(0,0,0,0.15)", maxWidth: 300 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#D97706", fontFamily: "sans-serif", letterSpacing: "0.06em", textTransform: "uppercase" }}>✨ AI Suggestion</span>
+            <button onClick={() => { setAiAssist(""); setAssistTarget(""); }} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: "1rem" }}>×</button>
+          </div>
+          {assistTarget && <p style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "0.4rem", fontStyle: "italic" }}>Re: "{assistTarget.slice(0, 50)}{assistTarget.length > 50 ? "..." : ""}"</p>}
+          <p style={{ fontSize: "0.85rem", color: "var(--text)", fontFamily: "sans-serif", lineHeight: 1.6, margin: "0 0 0.75rem" }}>{aiAssist}</p>
+          <button onClick={() => { setChatInput(aiAssist); setAiAssist(""); setAssistTarget(""); setChatOpen(true); }} style={{ width: "100%", background: "#D97706", color: "#fff", border: "none", borderRadius: 8, padding: "7px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif" }}>
+            Use this response
+          </button>
+        </div>
+      )}
+
+      {/* ── AI ROOM SUMMARY (ended rooms) ── */}
+      {ended && isHost && (
+        <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 140, background: "var(--bg)", border: "1px solid rgba(217,119,6,0.3)", borderRadius: 14, padding: "1rem 1.25rem", boxShadow: "0 8px 32px rgba(0,0,0,0.15)", width: "calc(100% - 32px)", maxWidth: 480 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>✨ Session Summary</span>
+            {!aiSummary && (
+              <button onClick={generateSummary} disabled={aiLoading} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700, cursor: aiLoading ? "default" : "pointer", fontFamily: "sans-serif", opacity: aiLoading ? 0.7 : 1 }}>
+                {aiLoading ? "Generating..." : "Generate with AI"}
+              </button>
+            )}
+          </div>
+          {aiSummary ? (
+            <p style={{ fontSize: "0.85rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.65, margin: 0 }}>{aiSummary}</p>
+          ) : (
+            <p style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", margin: 0 }}>Generate an AI summary of this session's key topics and insights.</p>
+          )}
+        </div>
+      )}
+
       <style>{`
         @keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+        @keyframes slideIn { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes wave { 0%{transform:scaleY(0.4)} 100%{transform:scaleY(1)} }
         .chat-sidebar { display: flex !important; }
         .mobile-leave { display: none !important; }

@@ -28,6 +28,7 @@ export default function CreateRoom() {
   const [recorded,     setRecorded]     = useState(false);
   const [openRoom,     setOpenRoom]     = useState(true);
   const [loading,      setLoading]      = useState(false);
+  const [aiDescLoading, setAiDescLoading] = useState(false);
   const [published,    setPublished]    = useState(false);
   const [errors,       setErrors]       = useState<Record<string, string>>({});
 
@@ -57,6 +58,21 @@ export default function CreateRoom() {
     if (ticketed && !ticketPrice) e.price = "Enter a ticket price";
     setErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  const generateDescription = async () => {
+    if (!title.trim() || aiDescLoading) return;
+    setAiDescLoading(true);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature: "room_description", payload: { title: title.trim(), category, language: languages[0] ?? "English" } }),
+      });
+      const { result } = await res.json();
+      if (result) setDescription(result);
+    } catch { /* silent fail */ }
+    finally { setAiDescLoading(false); }
   };
 
   const handleSubmit = async () => {
@@ -154,7 +170,12 @@ export default function CreateRoom() {
             </div>
 
             <div style={field}>
-              <label style={lbl}>Description</label>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                <label style={{ ...lbl, marginBottom: 0 }}>Description</label>
+                <button type="button" onClick={generateDescription} disabled={!title.trim() || aiDescLoading} style={{ background: "rgba(217,119,6,0.1)", color: "#D97706", border: "1px solid rgba(217,119,6,0.3)", borderRadius: 6, padding: "3px 10px", fontSize: "0.72rem", fontWeight: 600, cursor: !title.trim() || aiDescLoading ? "default" : "pointer", fontFamily: "sans-serif", opacity: !title.trim() ? 0.5 : 1 }}>
+                  {aiDescLoading ? "Generating..." : "✨ AI write"}
+                </button>
+              </div>
               <span style={hint}>What will you discuss? What should listeners expect?</span>
               <textarea style={ta} maxLength={300} value={description} placeholder="Describe your session in a few sentences..." onChange={e => setDescription(e.target.value)} />
               <div style={charCnt}>{description.length} / 300</div>
