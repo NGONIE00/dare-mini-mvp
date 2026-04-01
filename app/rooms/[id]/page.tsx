@@ -162,8 +162,8 @@ export default function RoomPage() {
         .select("*, profiles(id,display_name,avatar_url)").eq("id", roomId).single();
       if (!roomData) { router.push("/rooms"); return; }
       setRoom(roomData);
-      setManageTitle(roomData.title);
-      setManageDesc(roomData.description ?? "");
+      setEditTitle(roomData.title);
+      setEditDesc(roomData.description ?? "");
       setIsHost(user?.id === roomData.host_id);
       if (roomData.status === "ended") setEnded(true);
       const [{ data: msgs }, { data: parts }] = await Promise.all([
@@ -322,11 +322,11 @@ export default function RoomPage() {
     }
   };
 
-  const saveRoomChanges = async () => {
-    if (!room || manageSaving) return;
+  const saveRoomEdits = async () => {
+    if (!room || editSaving) return;
     setManageSaving(true);
-    const t = manageTitle.trim().replace(/[<>'"]/g, "");
-    const d = manageDesc.trim().replace(/[<>'"]/g, "");
+    const t = editTitle.trim().replace(/[<>'"]/g, "");
+    const d = editDesc.trim().replace(/[<>'"]/g, "");
     await supabase.from("rooms").update({ title: t, description: d }).eq("id", roomId);
     setRoom(prev => prev ? { ...prev, title: t, description: d } : prev);
     setManageSaving(false);
@@ -1246,20 +1246,20 @@ export default function RoomPage() {
             </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Room title</label>
-              <input value={manageTitle} onChange={e => setManageTitle(e.target.value)} maxLength={80}
+              <input value={editTitle} onChange={e => setEditTitle(e.target.value)} maxLength={80}
                 style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", boxSizing: "border-box" as const }} />
-              <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right", marginTop: 3 }}>{manageTitle.length}/80</div>
+              <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right", marginTop: 3 }}>{editTitle.length}/80</div>
             </div>
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Description</label>
-              <textarea value={manageDesc} onChange={e => setManageDesc(e.target.value)} maxLength={300} rows={3}
+              <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} maxLength={300} rows={3}
                 style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", resize: "vertical" as const, boxSizing: "border-box" as const }} />
-              <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right", marginTop: 3 }}>{manageDesc.length}/300</div>
+              <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right", marginTop: 3 }}>{editDesc.length}/300</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setManageOpen(false)} style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 10, padding: "12px", fontSize: "0.9rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)" }}>Cancel</button>
-              <button onClick={saveRoomChanges} disabled={manageSaving || !manageTitle.trim()} style={{ flex: 2, background: "#D97706", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: manageSaving ? "default" : "pointer", fontFamily: "sans-serif", opacity: manageSaving ? 0.7 : 1 }}>
-                {manageSaving ? "Saving..." : "Save changes"}
+              <button onClick={saveRoomEdits} disabled={editSaving || !editTitle.trim()} style={{ flex: 2, background: "#D97706", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: editSaving ? "default" : "pointer", fontFamily: "sans-serif", opacity: editSaving ? 0.7 : 1 }}>
+                {editSaving ? "Saving..." : "Save changes"}
               </button>
             </div>
           </div>
