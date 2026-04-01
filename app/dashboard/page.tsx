@@ -22,10 +22,13 @@ type Transaction = {
 type Room = {
   id: string;
   title: string;
+  description?: string;
   category: string;
   scheduled_at: string;
   status: string;
   participant_count: number;
+  is_ticketed: boolean;
+  ticket_price: number;
 };
 type Profile = {
   display_name: string;
@@ -53,7 +56,19 @@ export default function Dashboard() {
   const [userId,        setUserId]        = useState<string | null>(null);
   const [loading,       setLoading]       = useState(true);
   const [activeTab,     setActiveTab]     = useState<"overview" | "sessions" | "tips" | "followers">("overview");
+  const [deletingRoom,  setDeletingRoom]  = useState<string | null>(null);
   const [withdrawOpen,  setWithdrawOpen]  = useState(false);
+  /* room management */
+  const [editRoom,      setEditRoom]      = useState<Room | null>(null);
+  const [deleteRoom,    setDeleteRoom]    = useState<Room | null>(null);
+  const [editTitle,     setEditTitle]     = useState("");
+  const [editDesc,      setEditDesc]      = useState("");
+  const [editDate,      setEditDate]      = useState("");
+  const [editTime,      setEditTime]      = useState("");
+  const [editTicketed,  setEditTicketed]  = useState(false);
+  const [editPrice,     setEditPrice]     = useState("");
+  const [roomSaving,    setRoomSaving]    = useState(false);
+  const [roomDeleting,  setRoomDeleting]  = useState(false);
   const [withdrawAmt,   setWithdrawAmt]   = useState("");
   const [withdrawing,   setWithdrawing]   = useState(false);
   const [withdrawDone,  setWithdrawDone]  = useState(false);
@@ -78,7 +93,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false })
           .limit(50),
         supabase.from("rooms")
-          .select("id, title, category, scheduled_at, status, participant_count")
+          .select("id, title, description, category, scheduled_at, status, participant_count, is_ticketed, ticket_price")
           .eq("host_id", user.id)
           .order("scheduled_at", { ascending: false })
           .limit(20),
@@ -144,6 +159,15 @@ export default function Dashboard() {
   });
   const maxFollowers = Math.max(...months.map(m => m.value), profile?.follower_count ?? 0, 1);
 
+  /* ── delete room from dashboard ── */
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!window.confirm("Delete this room? This cannot be undone.")) return;
+    setDeletingRoom(roomId);
+    await supabase.from("rooms").delete().eq("id", roomId);
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+    setDeletingRoom(null);
+  };
+
   /* ── withdraw ── */
   const handleWithdraw = async () => {
     if (!userId || !wallet || withdrawing) return;
@@ -160,6 +184,44 @@ export default function Dashboard() {
     setWithdrawDone(true);
     setWithdrawing(false);
     setTimeout(() => { setWithdrawOpen(false); setWithdrawDone(false); setWithdrawAmt(""); }, 2000);
+  };
+
+  /* ── Room edit/delete ── */
+  const openEditRoom = (r: Room) => {
+    setEditRoom(r);
+    setEditTitle(r.title);
+    setEditDesc(r.description ?? "");
+    const d = new Date(r.scheduled_at);
+    setEditDate(d.toISOString().split("T")[0]);
+    setEditTime(d.toTimeString().slice(0, 5));
+    setEditTicketed(r.is_ticketed);
+    setEditPrice(r.ticket_price?.toString() ?? "");
+  };
+
+  const saveRoom = async () => {
+    if (!editRoom || roomSaving) return;
+    setRoomSaving(true);
+    await supabase.from("rooms").update({
+      title:        editTitle.trim().replace(/[<>'"]/g, ""),
+      description:  editDesc.trim().replace(/[<>'"]/g, ""),
+      scheduled_at: new Date(`${editDate}T${editTime}`).toISOString(),
+      is_ticketed:  editTicketed,
+      ticket_price: editTicketed ? parseFloat(editPrice) || 0 : 0,
+    }).eq("id", editRoom.id);
+    setRooms(prev => prev.map(r => r.id === editRoom.id ? { ...r, title: editTitle, description: editDesc, scheduled_at: new Date(`${editDate}T${editTime}`).toISOString(), is_ticketed: editTicketed, ticket_price: editTicketed ? parseFloat(editPrice) || 0 : 0 } : r));
+    setRoomSaving(false);
+    setEditRoom(null);
+  };
+
+  const confirmDeleteRoom = async () => {
+    if (!deleteRoom || roomDeleting) return;
+    setRoomDeleting(true);
+    await supabase.from("room_participants").delete().eq("room_id", deleteRoom.id);
+    await supabase.from("messages").delete().eq("room_id", deleteRoom.id);
+    await supabase.from("rooms").delete().eq("id", deleteRoom.id);
+    setRooms(prev => prev.filter(r => r.id !== deleteRoom.id));
+    setRoomDeleting(false);
+    setDeleteRoom(null);
   };
 
   /* ── style tokens ── */
@@ -302,34 +364,44 @@ export default function Dashboard() {
                     const roomTips = tips.filter(t => t.room_id === r.id);
                     const roomTipTotal = roomTips.reduce((s, t) => s + t.amount, 0);
                     return (
-                      <div key={r.id} onClick={() => router.push(`/rooms/${r.id}`)}
-                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.9rem 1rem", background: "var(--bg2)", borderRadius: 8, cursor: "pointer", transition: "opacity 0.15s", flexWrap: "wrap" }}
-                        onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
-                        onMouseLeave={e => (e.currentTarget.style.opacity = "1")}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                      <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "0.9rem 1rem", background: "var(--bg2)", borderRadius: 8, flexWrap: "wrap" as const }}>
+                        {/* Title + date — clickable to room */}
+                        <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => router.push(`/rooms/${r.id}`)}>
                           <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
                           <div style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif", marginTop: 2 }}>
                             {fmtDate(r.scheduled_at)} · {fmtTime(r.scheduled_at)}
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: "1.25rem", flexShrink: 0 }}>
-                          <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{r.participant_count}</div>
-                            <div style={{ fontSize: "0.62rem", color: "var(--text3)", fontFamily: "sans-serif" }}>listeners</div>
+                        {/* Stats */}
+                        <div style={{ display: "flex", gap: "1rem", flexShrink: 0, alignItems: "center" }}>
+                          <div style={{ textAlign: "center" as const }}>
+                            <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>{r.participant_count}</div>
+                            <div style={{ fontSize: "0.6rem", color: "var(--text3)", fontFamily: "sans-serif" }}>listeners</div>
                           </div>
                           {roomTipTotal > 0 && (
-                            <div style={{ textAlign: "center" }}>
-                              <div style={{ fontSize: "1rem", fontWeight: 700, color: "#059669", fontFamily: "sans-serif" }}>${fmt(roomTipTotal)}</div>
-                              <div style={{ fontSize: "0.62rem", color: "var(--text3)", fontFamily: "sans-serif" }}>tips</div>
+                            <div style={{ textAlign: "center" as const }}>
+                              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#059669", fontFamily: "sans-serif" }}>${fmt(roomTipTotal)}</div>
+                              <div style={{ fontSize: "0.6rem", color: "var(--text3)", fontFamily: "sans-serif" }}>tips</div>
                             </div>
                           )}
                           <span style={{
                             background: r.status === "live" ? "rgba(5,150,105,0.12)" : r.status === "ended" ? "var(--bg3)" : "rgba(217,119,6,0.12)",
                             color: r.status === "live" ? "#059669" : r.status === "ended" ? "var(--text3)" : "#D97706",
                             border: `0.5px solid ${r.status === "live" ? "rgba(5,150,105,0.3)" : r.status === "ended" ? "var(--border)" : "rgba(217,119,6,0.3)"}`,
-                            borderRadius: 100, padding: "2px 8px", fontSize: "0.62rem",
-                            fontWeight: 600, fontFamily: "sans-serif", alignSelf: "center", textTransform: "capitalize",
+                            borderRadius: 100, padding: "2px 7px", fontSize: "0.62rem",
+                            fontWeight: 600, fontFamily: "sans-serif", textTransform: "capitalize",
                           }}>{r.status}</span>
+                        </div>
+                        {/* Action buttons */}
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          {r.status !== "ended" && (
+                            <button onClick={e => { e.stopPropagation(); openEditRoom(r); }} style={{ background: "var(--bg)", border: "0.5px solid var(--border2)", borderRadius: 7, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)", fontWeight: 600 }}>
+                              ✏️ Edit
+                            </button>
+                          )}
+                          <button onClick={e => { e.stopPropagation(); setDeleteRoom(r); }} style={{ background: "rgba(239,68,68,0.08)", border: "0.5px solid rgba(239,68,68,0.2)", borderRadius: 7, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: "#EF4444", fontWeight: 600 }}>
+                            🗑 Delete
+                          </button>
                         </div>
                       </div>
                     );
@@ -487,6 +559,111 @@ export default function Dashboard() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {/* ── EDIT ROOM MODAL ── */}
+      {editRoom && (
+        <div onClick={e => { if ((e.target as HTMLElement).id === "edit-room-bg") setEditRoom(null); }} id="edit-room-bg"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div style={{ background: "var(--bg)", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 520, padding: "1.5rem 1.5rem 2.5rem", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", margin: 0 }}>Edit room</h2>
+              <button onClick={() => setEditRoom(null)} style={{ background: "var(--bg2)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", color: "var(--text2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>×</button>
+            </div>
+
+            {/* Title */}
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Room title</label>
+              <input value={editTitle} onChange={e => setEditTitle(e.target.value)} maxLength={80}
+                style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", boxSizing: "border-box" as const }} />
+              <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right", marginTop: 3 }}>{editTitle.length}/80</div>
+            </div>
+
+            {/* Description */}
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Description</label>
+              <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} maxLength={300} rows={3}
+                style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", resize: "vertical" as const, boxSizing: "border-box" as const }} />
+              <div style={{ fontSize: "0.68rem", color: "var(--text3)", fontFamily: "sans-serif", textAlign: "right", marginTop: 3 }}>{editDesc.length}/300</div>
+            </div>
+
+            {/* Date + Time */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Date</label>
+                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
+                  style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", boxSizing: "border-box" as const }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Time</label>
+                <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)}
+                  style={{ width: "100%", background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none", boxSizing: "border-box" as const }} />
+              </div>
+            </div>
+
+            {/* Ticket toggle */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 0", borderBottom: "0.5px solid var(--border)", marginBottom: "0.75rem" }}>
+              <div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif" }}>Ticketed room</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>Charge listeners to join</div>
+              </div>
+              <button onClick={() => setEditTicketed(v => !v)} style={{ width: 36, height: 20, borderRadius: 100, border: "none", cursor: "pointer", background: editTicketed ? "#D97706" : "var(--border2)", position: "relative", transition: "background 0.2s" }}>
+                <span style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: editTicketed ? 19 : 3, transition: "left 0.2s", display: "block" }} />
+              </button>
+            </div>
+            {editTicketed && (
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 5 }}>Ticket price (USD)</label>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "var(--text3)", fontFamily: "sans-serif" }}>$</span>
+                  <input type="number" min="0.50" step="0.50" value={editPrice} onChange={e => setEditPrice(e.target.value)} placeholder="1.00"
+                    style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "10px 13px", fontSize: "0.9rem", color: "var(--text)", fontFamily: "sans-serif", outline: "none" }} />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setEditRoom(null)} style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 10, padding: "12px", fontSize: "0.9rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)" }}>
+                Cancel
+              </button>
+              <button onClick={saveRoom} disabled={roomSaving || !editTitle.trim()} style={{ flex: 2, background: "#D97706", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 700, cursor: roomSaving ? "default" : "pointer", fontFamily: "sans-serif", opacity: roomSaving ? 0.7 : 1 }}>
+                {roomSaving ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE ROOM MODAL ── */}
+      {deleteRoom && (
+        <div onClick={e => { if ((e.target as HTMLElement).id === "del-room-bg") setDeleteRoom(null); }} id="del-room-bg"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "var(--bg)", borderRadius: 16, border: "0.5px solid var(--border)", width: "100%", maxWidth: 380, padding: "1.5rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "1rem" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif" }}>Delete room</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>This cannot be undone</div>
+              </div>
+            </div>
+            <div style={{ background: "var(--bg2)", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: "1.25rem" }}>
+              <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", margin: "0 0 0.2rem" }}>{deleteRoom.title}</p>
+              <p style={{ fontSize: "0.75rem", color: "var(--text3)", fontFamily: "sans-serif", margin: 0 }}>{fmtDate(deleteRoom.scheduled_at)} · {deleteRoom.participant_count} listeners</p>
+            </div>
+            <p style={{ fontSize: "0.8rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.6, marginBottom: "1.25rem" }}>
+              All messages and participant data for this room will be permanently removed.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setDeleteRoom(null)} style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 10, padding: "11px", fontSize: "0.9rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)" }}>
+                Cancel
+              </button>
+              <button onClick={confirmDeleteRoom} disabled={roomDeleting} style={{ flex: 1, background: "#EF4444", color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 700, cursor: roomDeleting ? "default" : "pointer", fontFamily: "sans-serif", opacity: roomDeleting ? 0.7 : 1 }}>
+                {roomDeleting ? "Deleting..." : "Delete room"}
+              </button>
+            </div>
           </div>
         </div>
       )}
