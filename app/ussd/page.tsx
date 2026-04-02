@@ -353,8 +353,8 @@ export default function USSDPage() {
           dare.app
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "pulse 2s infinite" }} />
-          <span style={{ color: "#22c55e", fontSize: "0.72rem", letterSpacing: "0.12em" }}>USSD SIMULATOR</span>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#D97706", animation: "pulse 2s infinite" }} />
+          <span style={{ color: "#D97706", fontSize: "0.72rem", letterSpacing: "0.12em" }}>USSD SIMULATOR</span>
         </div>
       </div>
 
@@ -374,12 +374,12 @@ export default function USSDPage() {
 
         {/* Screen */}
         <div style={{
-          background: "#0d1f0d",
+          background: "#1a1000",
           borderRadius: 12,
           padding: "1rem",
           minHeight: 260,
-          border: "1px solid #1a3a1a",
-          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.6), 0 0 20px rgba(34,197,94,0.05)",
+          border: "1px solid #2a1800",
+          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.6), 0 0 20px rgba(217,119,6,0.08)",
           position: "relative",
           overflow: "hidden",
         }}>
@@ -387,21 +387,21 @@ export default function USSDPage() {
           <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)", pointerEvents: "none", borderRadius: 12 }} />
 
           {/* Carrier bar */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem", paddingBottom: "0.5rem", borderBottom: "1px solid #1a3a1a" }}>
-            <span style={{ color: "#4ade80", fontSize: "0.58rem", letterSpacing: "0.06em" }}>NetOne ZW</span>
-            <span style={{ color: "#4ade80", fontSize: "0.58rem" }}>▲▲▲▲ 2G</span>
-            <span style={{ color: "#4ade80", fontSize: "0.58rem" }}>🔋</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem", paddingBottom: "0.5rem", borderBottom: "1px solid #2a1800" }}>
+            <span style={{ color: "#D97706", fontSize: "0.58rem", letterSpacing: "0.06em" }}>NetOne ZW</span>
+            <span style={{ color: "#D97706", fontSize: "0.58rem" }}>▲▲▲▲ 2G</span>
+            <span style={{ color: "#D97706", fontSize: "0.58rem" }}>🔋</span>
           </div>
 
           {/* USSD header */}
           {currentScreen.title && (
-            <div style={{ color: "#4ade80", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", marginBottom: "0.6rem", borderBottom: "1px solid #1a3a1a", paddingBottom: "0.4rem" }}>
+            <div style={{ color: "#D97706", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", marginBottom: "0.6rem", borderBottom: "1px solid #2a1800", paddingBottom: "0.4rem" }}>
               {currentScreen.title}
             </div>
           )}
 
           {/* Body text */}
-          <div style={{ color: "#86efac", fontSize: "0.7rem", lineHeight: 1.7, marginBottom: "0.75rem", whiteSpace: "pre-wrap", minHeight: 80 }}>
+          <div style={{ color: "#fbbf24", fontSize: "0.7rem", lineHeight: 1.7, marginBottom: "0.75rem", whiteSpace: "pre-wrap", minHeight: 80 }}>
             {displayBody}
             {typing && <span style={{ animation: "blink 0.8s infinite" }}>█</span>}
           </div>
@@ -409,20 +409,20 @@ export default function USSDPage() {
           {/* Options */}
           {!typing && currentScreen.options && currentScreen.options.map(opt => (
             <div key={opt.key} style={{ display: "flex", gap: 8, marginBottom: "0.2rem" }}>
-              <span style={{ color: "#4ade80", fontSize: "0.68rem", fontWeight: 700, minWidth: 14 }}>{opt.key}.</span>
-              <span style={{ color: "#86efac", fontSize: "0.68rem" }}>{opt.label}</span>
+              <span style={{ color: "#D97706", fontSize: "0.68rem", fontWeight: 700, minWidth: 14 }}>{opt.key}.</span>
+              <span style={{ color: "#fbbf24", fontSize: "0.68rem" }}>{opt.label}</span>
             </div>
           ))}
 
           {/* Auto-loading indicator */}
           {currentScreen.autoNext && !typing && (
-            <div style={{ color: "#4ade80", fontSize: "0.62rem", marginTop: "0.5rem", opacity: 0.7 }}>Loading...</div>
+            <div style={{ color: "#D97706", fontSize: "0.62rem", marginTop: "0.5rem", opacity: 0.7 }}>Loading...</div>
           )}
 
           {/* End screen */}
           {currentScreen.isEnd && !typing && (
             <div style={{ marginTop: "0.75rem" }}>
-              <button onClick={reset} style={{ background: "none", border: "1px solid #4ade80", color: "#4ade80", borderRadius: 4, padding: "4px 10px", fontSize: "0.65rem", cursor: "pointer", fontFamily: "inherit", letterSpacing: "0.06em" }}>
+              <button onClick={reset} style={{ background: "none", border: "1px solid #D97706", color: "#D97706", borderRadius: 4, padding: "4px 10px", fontSize: "0.65rem", cursor: "pointer", fontFamily: "inherit", letterSpacing: "0.06em" }}>
                 DIAL *447# AGAIN
               </button>
             </div>
@@ -432,7 +432,7 @@ export default function USSDPage() {
         {/* Input area */}
         <div style={{ marginTop: 12, padding: "0.6rem 0.75rem", background: "#111", borderRadius: 8, border: "1px solid #222" }}>
           <form onSubmit={handleInput} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: "#4ade80", fontSize: "0.72rem", flexShrink: 0 }}>Enter:</span>
+            <span style={{ color: "#D97706", fontSize: "0.72rem", flexShrink: 0 }}>Enter:</span>
             <input
               ref={inputRef}
               value={input}
@@ -442,11 +442,11 @@ export default function USSDPage() {
               disabled={!currentScreen.options || !!currentScreen.autoNext || typing}
               style={{
                 flex: 1, background: "transparent", border: "none", outline: "none",
-                color: "#4ade80", fontSize: "0.8rem", fontFamily: "inherit",
-                caretColor: "#4ade80",
+                color: "#D97706", fontSize: "0.8rem", fontFamily: "inherit",
+                caretColor: "#D97706",
               }}
             />
-            <button type="submit" disabled={!input || typing} style={{ background: "#166534", border: "none", color: "#4ade80", borderRadius: 4, padding: "3px 10px", fontSize: "0.68rem", cursor: "pointer", fontFamily: "inherit", opacity: !input ? 0.4 : 1 }}>
+            <button type="submit" disabled={!input || typing} style={{ background: "#92400e", border: "none", color: "#D97706", borderRadius: 4, padding: "3px 10px", fontSize: "0.68rem", cursor: "pointer", fontFamily: "inherit", opacity: !input ? 0.4 : 1 }}>
               OK
             </button>
           </form>
@@ -487,7 +487,7 @@ export default function USSDPage() {
 
       {/* Grant context panel */}
       <div style={{ marginTop: "2rem", maxWidth: 480, width: "100%", background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: "1.25rem 1.5rem" }}>
-        <div style={{ color: "#4ade80", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Why USSD matters for Zimbabwe</div>
+        <div style={{ color: "#D97706", fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.75rem" }}>Why USSD matters for Zimbabwe</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
           {[
             { stat: "~68%", label: "of Zimbabweans lack smartphone access" },
@@ -496,7 +496,7 @@ export default function USSDPage() {
             { stat: "*447#", label: "works on any phone that can make a call" },
           ].map(s => (
             <div key={s.stat} style={{ background: "#0a0a0a", borderRadius: 8, padding: "0.75rem" }}>
-              <div style={{ color: "#4ade80", fontSize: "1rem", fontWeight: 700, fontFamily: "inherit" }}>{s.stat}</div>
+              <div style={{ color: "#D97706", fontSize: "1rem", fontWeight: 700, fontFamily: "inherit" }}>{s.stat}</div>
               <div style={{ color: "#555", fontSize: "0.65rem", lineHeight: 1.5, marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
