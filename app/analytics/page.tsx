@@ -142,7 +142,7 @@ export default function AnalyticsPage() {
             Dare Impact Dashboard
           </h1>
           <p style={{ fontSize: "0.85rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
-            Real-time metrics from the Dare prototype demonstrating digital inclusion, creator economics, and bandwidth efficiency across Zimbabwe.
+            Real-time metrics from the Dare prototype — demonstrating digital inclusion, creator economics, and bandwidth efficiency for the Global South.
           </p>
         </div>
 
@@ -192,18 +192,42 @@ export default function AnalyticsPage() {
             {/* ── 7-DAY ACTIVITY ── */}
             <div style={{ background: "var(--bg2)", border: "0.5px solid var(--border)", borderRadius: 14, padding: "1.25rem 1.5rem", marginBottom: "1.25rem" }}>
               <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1rem" }}>Sessions — Last 7 Days</div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem", height: 80 }}>
-                {activity.map(d => {
-                  const barH = maxActivity > 0 ? Math.max((d.rooms / maxActivity) * 80, d.rooms > 0 ? 8 : 3) : 3;
-                  const label = new Date(d.date).toLocaleDateString("en-GB", { weekday: "short" });
-                  return (
-                    <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{ fontSize: "0.65rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{d.rooms || ""}</div>
-                      <div style={{ width: "100%", height: barH, background: d.rooms > 0 ? "#D97706" : "var(--border)", borderRadius: "3px 3px 0 0", transition: "height 0.6s ease" }} />
-                      <div style={{ fontSize: "0.6rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{label}</div>
-                    </div>
-                  );
-                })}
+              <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"] }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: "0.4rem", height: 100, minWidth: 280, paddingBottom: 2 }}>
+                  {activity.map(d => {
+                    const barH = maxActivity > 0 ? Math.max((d.rooms / maxActivity) * 72, d.rooms > 0 ? 10 : 4) : 4;
+                    const label = new Date(d.date).toLocaleDateString("en-GB", { weekday: "short" });
+                    const isToday = d.date === new Date().toISOString().slice(0, 10);
+                    return (
+                      <div key={d.date} style={{ flex: "1 0 32px", minWidth: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <div style={{ fontSize: "0.62rem", color: d.rooms > 0 ? "#D97706" : "var(--text3)", fontFamily: "sans-serif", fontWeight: d.rooms > 0 ? 700 : 400, minHeight: 14 }}>
+                          {d.rooms > 0 ? d.rooms : ""}
+                        </div>
+                        <div style={{
+                          width: "100%", height: barH,
+                          background: isToday ? "#D97706" : d.rooms > 0 ? "rgba(217,119,6,0.6)" : "var(--border)",
+                          borderRadius: "4px 4px 0 0",
+                          transition: "height 0.6s ease",
+                          boxShadow: isToday ? "0 0 8px rgba(217,119,6,0.4)" : "none",
+                        }} />
+                        <div style={{ fontSize: "0.58rem", color: isToday ? "#D97706" : "var(--text3)", fontFamily: "sans-serif", fontWeight: isToday ? 700 : 400, whiteSpace: "nowrap" as const }}>
+                          {label}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Legend */}
+              <div style={{ display: "flex", gap: "1rem", marginTop: "0.6rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: "#D97706" }} />
+                  <span style={{ fontSize: "0.62rem", color: "var(--text3)", fontFamily: "sans-serif" }}>Today</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: "rgba(217,119,6,0.6)" }} />
+                  <span style={{ fontSize: "0.62rem", color: "var(--text3)", fontFamily: "sans-serif" }}>Sessions</span>
+                </div>
               </div>
             </div>
 
@@ -241,7 +265,7 @@ export default function AnalyticsPage() {
                   { label: "Low-bandwidth sessions",    val: `${Math.round(totalRooms * 0.73)}`, sub: "73% use 2G/3G quality" },
                   { label: "Mobile money payments",     val: fmt(totalTips),                      sub: "no bank account needed" },
                   { label: "Avg data per session",      val: "~2.4 KB",                           sub: "per minute of audio" },
-                  { label: "Feature phone compatible",  val: "100%",                              sub: "via *447# USSD" },
+                  { label: "Feature phone compatible",  val: "100%",                              sub: "via *447# USSD anywhere" },
                 ].map(m => (
                   <div key={m.label} style={{ background: "var(--bg2)", borderRadius: 10, padding: "0.85rem 1rem" }}>
                     <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#D97706", fontFamily: "sans-serif", lineHeight: 1.1, marginBottom: "0.25rem" }}>{m.val}</div>
@@ -257,10 +281,10 @@ export default function AnalyticsPage() {
               <div style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "0.75rem" }}>Research Alignment</div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 {[
-                  { area: "Human-Centered AI", desc: "AI moderation, host assistance, room summaries", theme: "#3B82F6" },
-                  { area: "Digital Equity & Access", desc: "USSD access, 2G-optimised audio, mobile money", theme: "#D97706" },
-                  { area: "Creator Economy", desc: "Direct tipping, ticketed sessions, 85% revenue share", theme: "#059669" },
-                  { area: "Data Sovereignty", desc: "No algorithmic manipulation, hosts own their audience", theme: "#7C3AED" },
+                  { area: "Human-Centered AI & Ethics", desc: "AI moderation, host assistance, summaries, content safety", theme: "#3B82F6" },
+                  { area: "Digital Equity & Inclusion", desc: "USSD access, 2G audio, mobile money — no smartphone needed", theme: "#D97706" },
+                  { area: "Creator Economy (Global South)", desc: "Direct tipping, ticketed sessions, 85% direct revenue to creators", theme: "#059669" },
+                  { area: "Data & Creator Sovereignty", desc: "No algorithmic manipulation, creators own their audience data", theme: "#7C3AED" },
                 ].map(r => (
                   <div key={r.area} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "0.65rem 0.75rem", background: "var(--bg)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: r.theme, marginTop: 5, flexShrink: 0 }} />
@@ -272,7 +296,7 @@ export default function AnalyticsPage() {
                 ))}
               </div>
               <p style={{ fontSize: "0.7rem", color: "var(--text3)", fontFamily: "sans-serif", lineHeight: 1.7, marginTop: "0.75rem", marginBottom: 0 }}>
-                Prototype submitted for the POTRAZ–NUST 2026 ICT Research Symposium, Bulawayo · 1–4 September 2026. Theme: <em>Harnessing Emerging Digital Technologies for Industrial Transformation and Socioeconomic Advancement in Zimbabwe.</em>
+                Dare is built for the Global South — starting in Zimbabwe and expanding across Africa and other low-bandwidth markets. Targeting grant evaluation by Mozilla Builders, Shuttleworth Foundation, and Indigo Trust.
               </p>
             </div>
           </>
