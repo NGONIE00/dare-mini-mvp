@@ -11,9 +11,13 @@
 
 **Dare** (*/daː.ɾe/* · Shona) — *a traditional community council where every voice has a seat.*
 
+<<<<<<< HEAD
 Dare is a digital voice infrastructure designed for inclusion at scale. It enables communities to host, join, and sustain live voice conversations — regardless of device, bandwidth, or financial access.
 
 Where most platforms assume smartphones and stable internet, Dare is designed for constraint:
+=======
+Dare is a digital-inclusive voice platform built for the Global South. It enables community members to host, join, and monetise live voice sessions — on any device, on any connection, with or without 
+>>>>>>> 0570ae9e6599e91ea0bb442cb4e5a76743b1306d
 
 - Works on feature phones via USSD
 - Operates on ultra-low bandwidth (2G compatible)
@@ -42,6 +46,13 @@ Digital participation is not evenly distributed.
 
 Dare introduces a dual-access system:
 
+<<<<<<< HEAD
+=======
+Smartphone user opens dare.app  
+                                →  AI-assisted hosting tools
+                                →  Real-time voice with speaking indicators
+                                →  Analytics dashboard for grant reviewers
+>>>>>>> 0570ae9e6599e91ea0bb442cb4e5a76743b1306d
 ```
 Feature Phone Access (*447#)          Smartphone Access (Web App)
 → USSD navigation                     → Full real-time voice experience
