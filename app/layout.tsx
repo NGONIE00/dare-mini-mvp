@@ -5,6 +5,10 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "Dare — The Digital Council",
   description: "Inclusive voice platform for low-bandwidth users. Works on any phone, any connection.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
