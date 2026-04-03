@@ -771,6 +771,29 @@ export default function RoomPage() {
               </div>
             )}
 
+            {/* Recording playback — visible to all when session ended and recording exists */}
+            {ended && room?.recording_url && (
+              <div style={{ padding: "0.75rem 1.25rem", background: "rgba(217,119,6,0.06)", borderBottom: "0.5px solid rgba(217,119,6,0.2)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(217,119,6,0.15)", border: "0.5px solid rgba(217,119,6,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#D97706"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text)", fontFamily: "sans-serif", marginBottom: 2 }}>Session recording available</div>
+                    <audio
+                      controls
+                      src={room.recording_url}
+                      style={{ width: "100%", height: 32, accentColor: "#D97706" }}
+                    />
+                  </div>
+                  <a href={room.recording_url} download target="_blank" rel="noreferrer"
+                    style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "5px 10px", fontSize: "0.72rem", color: "var(--text2)", fontFamily: "sans-serif", textDecoration: "none", flexShrink: 0 }}>
+                    ↓ Download
+                  </a>
+                </div>
+              </div>
+            )}
+
             {/* ── HOST HERO ── */}
             <div style={{ padding: "2rem 1.5rem 1.25rem", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               {/* Big host avatar */}
