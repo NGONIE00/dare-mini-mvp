@@ -13,9 +13,7 @@
 
 **Dare** (*/daː.ɾe/* · Shona) — *a traditional community council gathering where every voice has a seat.*
 
-Dare is a digital-inclusive voice platform built for the Global South. It enables community members to host, join, and monetise live voice sessions — on any device, on any connection, with or without a smartphone.
-
-Where Clubhouse requires a smartphone and broadband, Dare works on a basic feature phone over USSD. Where Spotify requires 120 KB/min, Dare uses 8 KB/min — fully intelligible on 2G.
+Dare is a digital-inclusive voice platform built for the Global South. It enables community members to host, join, and monetise live voice sessions — on any device, on any connection, with or without 
 
 **Starting in Zimbabwe. Built for the world.**
 
@@ -40,7 +38,7 @@ Feature phone user dials *447#  →  Browses rooms via USSD menu
                                 →  Tips host via EcoCash / M-Pesa
                                 →  No smartphone. No data plan. No app store.
 
-Smartphone user opens dare.app  →  Full Clubhouse-style experience
+Smartphone user opens dare.app  
                                 →  AI-assisted hosting tools
                                 →  Real-time voice with speaking indicators
                                 →  Analytics dashboard for grant reviewers
