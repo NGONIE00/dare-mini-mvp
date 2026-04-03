@@ -11,7 +11,7 @@ type Room = {
   id: string; host_id: string; title: string; description: string;
   category: string; language: string; scheduled_at: string;
   duration_minutes: number; status: string;
-  is_ticketed: boolean; ticket_price: number; participant_count: number; is_recording: boolean;
+  is_ticketed: boolean; ticket_price: number; participant_count: number; is_recording: boolean; recording_url: string | null;
   profiles: { id: string; display_name: string; avatar_url: string | null } | null;
 };
 type Message = {
