@@ -39,9 +39,6 @@ export default function DemoPage() {
     setLoggingIn(phone);
     setError("");
     try {
-      // First sign out any existing session
-      await supabase.auth.signOut();
-
       const email = phoneToEmail(phone);
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -49,21 +46,20 @@ export default function DemoPage() {
       });
 
       if (signInError) {
-        // Show the actual error + the email being attempted to help debug
-        setError(`Could not sign in as ${name}: ${signInError.message} (tried: ${email})`);
+        setError(`Could not sign in as ${name}: ${signInError.message}`);
         setLoggingIn(null);
         return;
       }
 
       if (!data.user) {
-        setError(`Sign in returned no user for ${name}. Run reset-demo-passwords.sql in Supabase.`);
+        setError(`No user returned for ${name}. Run reset-demo-passwords.sql in Supabase SQL Editor.`);
         setLoggingIn(null);
         return;
       }
 
       router.push("/rooms");
     } catch (err: unknown) {
-      setError(`Unexpected error for ${name}: ${err instanceof Error ? err.message : "unknown"}`);
+      setError(err instanceof Error ? err.message : "Something went wrong");
       setLoggingIn(null);
     }
   };
