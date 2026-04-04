@@ -39,14 +39,31 @@ export default function DemoPage() {
     setLoggingIn(phone);
     setError("");
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email:    phoneToEmail(phone),
+      // First sign out any existing session
+      await supabase.auth.signOut();
+
+      const email = phoneToEmail(phone);
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
         password: "DareDemo2026!",
       });
-      if (signInError) throw signInError;
+
+      if (signInError) {
+        // Show the actual error + the email being attempted to help debug
+        setError(`Could not sign in as ${name}: ${signInError.message} (tried: ${email})`);
+        setLoggingIn(null);
+        return;
+      }
+
+      if (!data.user) {
+        setError(`Sign in returned no user for ${name}. Run reset-demo-passwords.sql in Supabase.`);
+        setLoggingIn(null);
+        return;
+      }
+
       router.push("/rooms");
-    } catch {
-      setError(`Could not sign in as ${name}. Make sure you have run the seed SQL first.`);
+    } catch (err: unknown) {
+      setError(`Unexpected error for ${name}: ${err instanceof Error ? err.message : "unknown"}`);
       setLoggingIn(null);
     }
   };
