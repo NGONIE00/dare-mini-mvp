@@ -27,6 +27,7 @@ type Room = {
   scheduled_at: string;
   status: string;
   participant_count: number;
+  is_featured: boolean;
   is_ticketed: boolean;
   ticket_price: number;
 };
@@ -395,7 +396,17 @@ export default function Dashboard() {
                         {/* Action buttons */}
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                           {r.status !== "ended" && (
-                            <button onClick={e => { e.stopPropagation(); openEditRoom(r); }} style={{ background: "var(--bg)", border: "0.5px solid var(--border2)", borderRadius: 7, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)", fontWeight: 600 }}>
+                            <button
+                              onClick={async e => {
+                                e.stopPropagation();
+                                await supabase.from("rooms").update({ is_featured: !r.is_featured }).eq("id", r.id);
+                                setRooms(prev => prev.map(x => x.id === r.id ? { ...x, is_featured: !x.is_featured } : x));
+                              }}
+                              title={r.is_featured ? "Unpin room" : "Pin to top"}
+                              style={{ background: r.is_featured ? "rgba(217,119,6,0.1)" : "var(--bg)", border: `0.5px solid ${r.is_featured ? "#D97706" : "var(--border2)"}`, borderRadius: 7, padding: "5px 10px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: r.is_featured ? "#D97706" : "var(--text2)" }}>
+                            {r.is_featured ? "📌" : "📍"}
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); openEditRoom(r); }} style={{ background: "var(--bg)", border: "0.5px solid var(--border2)", borderRadius: 7, padding: "5px 12px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "sans-serif", color: "var(--text2)", fontWeight: 600 }}>
                               ✏️ Edit
                             </button>
                           )}

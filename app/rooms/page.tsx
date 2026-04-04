@@ -20,6 +20,7 @@ type Room = {
   ticket_price: number;
   status: string;
   participant_count: number;
+  is_featured: boolean;
   profiles: { id: string; display_name: string } | null;
 };
 
@@ -40,6 +41,7 @@ export default function Rooms() {
         .from("rooms")
         .select("*, profiles(id, display_name)")
         .in("status", ["scheduled", "live"])
+        .order("is_featured", { ascending: false })
         .order("scheduled_at", { ascending: true });
 
       if (error) console.error("Rooms fetch error:", error.message, error.code);
@@ -138,6 +140,31 @@ export default function Rooms() {
               }}>{f}</button>
             ))}
           </div>
+
+          {/* ── Featured / Pinned room ── */}
+          {rooms.filter(r => r.is_featured).map(room => (
+            <div key={room.id} onClick={() => router.push(`/rooms/${room.id}`)}
+              style={{ background: "rgba(217,119,6,0.05)", border: "1.5px solid #D97706", borderRadius: 12, padding: "1rem 1.25rem", cursor: "pointer", marginBottom: "1.25rem", position: "relative", overflow: "hidden" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(217,119,6,0.09)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(217,119,6,0.05)")}>
+              {/* Featured badge */}
+              <div style={{ position: "absolute", top: 12, right: 12, background: "#D97706", color: "#fff", borderRadius: 100, padding: "2px 9px", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "sans-serif" }}>
+                📌 Featured
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.5rem" }}>
+                <span style={{ background: room.status === "live" ? "rgba(5,150,105,0.12)" : "rgba(217,119,6,0.12)", color: room.status === "live" ? "#059669" : "#D97706", border: `0.5px solid ${room.status === "live" ? "rgba(5,150,105,0.3)" : "rgba(217,119,6,0.3)"}`, borderRadius: 100, padding: "2px 8px", fontSize: "0.62rem", fontWeight: 600, fontFamily: "sans-serif" }}>
+                  {room.status === "live" ? "● Live now" : "○ Starting soon"}
+                </span>
+                {room.is_recording && <span style={{ fontSize: "0.62rem", color: "#EF4444", fontFamily: "sans-serif", fontWeight: 600 }}>⏺ Recording</span>}
+              </div>
+              <div style={{ fontSize: "1rem", fontWeight: 800, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.35rem", paddingRight: 80 }}>{room.title}</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text2)", fontFamily: "sans-serif", lineHeight: 1.6, marginBottom: "0.5rem" }}>{room.description?.slice(0, 120)}{(room.description?.length ?? 0) > 120 ? "…" : ""}</div>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <span style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>Hosted by {room.profiles?.display_name}</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif" }}>{room.participant_count} listening</span>
+              </div>
+            </div>
+          ))}
 
           {/* ── AI Recommended ── */}
           {recsLoaded && aiRecs.length > 0 && (
