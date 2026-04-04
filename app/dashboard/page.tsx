@@ -94,7 +94,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false })
           .limit(50),
         supabase.from("rooms")
-          .select("id, title, description, category, scheduled_at, status, participant_count, is_ticketed, ticket_price")
+          .select("id, title, description, category, scheduled_at, status, participant_count, is_ticketed, ticket_price, is_featured")
           .eq("host_id", user.id)
           .order("scheduled_at", { ascending: false })
           .limit(20),
