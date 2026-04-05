@@ -243,7 +243,7 @@ export default function Home() {
               <p style={{ color: "var(--text3)", fontSize: "0.72rem", fontFamily: "sans-serif", lineHeight: 1.6 }}>Inclusive voice for everyone, on any connection.</p>
             </div>
             {[
-              { h: "Product", links: [{ l: "Browse rooms", fn: () => router.push("/rooms") }, { l: "Get started", fn: () => router.push("/register") }, { l: "Sign in", fn: () => router.push("/signin") }, { l: "Demo", fn: () => router.push("/demo") }] },
+              { h: "Product", links: [{ l: "Browse rooms", fn: () => router.push("/rooms") }, { l: "Feature phone (*447#)", fn: () => router.push("/ussd") }, { l: "Impact metrics", fn: () => router.push("/analytics") }, { l: "Demo accounts", fn: () => router.push("/demo") }, { l: "Get started", fn: () => router.push("/register") }, { l: "Sign in", fn: () => router.push("/signin") }] },
               { h: "Company", links: [{ l: "About", fn: () => {} }, { l: "Contact", fn: () => {} }] },
               { h: "Legal",   links: [{ l: "Privacy policy", fn: () => {} }, { l: "Terms of service", fn: () => {} }] },
             ].map(col => (

@@ -179,6 +179,8 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
           {/* Auth state */}
           {!userId ? (
             <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => router.push("/ussd")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>*447#</button>
+              <button onClick={() => router.push("/analytics")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>Metrics</button>
               <button onClick={() => router.push("/signin")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>Sign in</button>
               <button onClick={() => router.push("/register")} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>Get started</button>
             </div>
@@ -205,8 +207,15 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Start a room
                   </button>
+                  <button onClick={() => { router.push("/ussd"); setUserMenuOpen(false); }} style={menuBtn}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    Feature phone
+                  </button>
+                  <button onClick={() => { router.push("/analytics"); setUserMenuOpen(false); }} style={menuBtn}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Impact metrics
+                  </button>
                   <div style={{ borderTop: "0.5px solid var(--border)", margin: "4px 0" }} />
-                  <button onClick={handleSignOut} style={{ ...menuBtn, color: "#EF4444" }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     Sign out
                   </button>
