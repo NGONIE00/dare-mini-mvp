@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
 async function generate(prompt: string, maxTokens = 400): Promise<string> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     generationConfig: {
       maxOutputTokens: maxTokens,
       temperature: 0.7,
@@ -17,6 +17,12 @@ async function generate(prompt: string, maxTokens = 400): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
+    // Verify API key is present
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY is not set");
+      return NextResponse.json({ error: "AI not configured — GEMINI_API_KEY missing" }, { status: 500 });
+    }
+
     const { feature, payload } = await req.json();
 
     let prompt = "";
@@ -143,7 +149,8 @@ Prioritise: live rooms first, then category match, then diversity.`;
     return NextResponse.json({ result });
 
   } catch (err) {
-    console.error("Gemini AI route error:", err);
-    return NextResponse.json({ error: "AI request failed" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Gemini AI route error:", msg);
+    return NextResponse.json({ error: `AI request failed: ${msg}` }, { status: 500 });
   }
 }
