@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new Anthropic();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+
+async function generate(prompt: string, maxTokens = 400): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    generationConfig: {
+      maxOutputTokens: maxTokens,
+      temperature: 0.7,
+    },
+  });
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,11 +49,11 @@ Return ONLY the description text, nothing else.`;
       /* ── 2. Room summary ── */
       case "room_summary": {
         const { title, messages, participant_count } = payload;
-        const msgText = messages
-          .slice(-80) // last 80 messages max
-          .map((m: { display_name: string; message: string }) => `${m.display_name}: ${m.message}`)
+        const msgText = (messages as Array<{ display_name: string; message: string }>)
+          .slice(-80)
+          .map(m => `${m.display_name}: ${m.message}`)
           .join("\n");
-        prompt = `You are summarising a completed voice room session on Dare, a community platform in Zimbabwe.
+        prompt = `You are summarising a completed voice room session on Dare, a community platform.
 
 Room: "${title}"
 Participants: ${participant_count}
@@ -62,10 +74,13 @@ Return ONLY the summary text.`;
       /* ── 3. Content moderation ── */
       case "moderate_message": {
         const { message } = payload;
-        prompt = `You are a content moderator for Dare, a respectful community voice platform in Zimbabwe.
+        prompt = `You are a content moderator for Dare, a respectful community voice platform.
 
-Review this chat message and respond with ONLY valid JSON:
-{"safe": true/false, "reason": "brief reason if not safe"}
+Review this chat message and respond with ONLY valid JSON (no markdown, no backticks):
+{"safe": true, "reason": ""}
+
+Or if unsafe:
+{"safe": false, "reason": "brief reason"}
 
 Message: "${message}"
 
@@ -75,7 +90,8 @@ Flag as unsafe ONLY if it contains:
 - Sexual content
 - Personal information (phone numbers, addresses)
 
-Be permissive — community debate, disagreement, local slang, and strong opinions are fine.`;
+Be permissive — community debate, disagreement, local slang, and strong opinions are fine.
+Return ONLY the JSON object.`;
         maxTokens = 80;
         break;
       }
@@ -83,14 +99,14 @@ Be permissive — community debate, disagreement, local slang, and strong opinio
       /* ── 4. AI host assistant ── */
       case "host_assist": {
         const { question, room_title, category } = payload;
-        prompt = `You are an AI assistant helping a host respond to a question in a live Dare voice room in Zimbabwe.
+        prompt = `You are an AI assistant helping a host respond to a question in a live Dare voice room.
 
 Room: "${room_title}" (${category})
 Listener's question: "${question}"
 
 Suggest a helpful, concise response (1-3 sentences) the host could use.
 Keep it conversational, community-focused, and relevant to the African context.
-Return ONLY the suggested response text.`;
+Return ONLY the suggested response text, nothing else.`;
         maxTokens = 150;
         break;
       }
@@ -98,21 +114,20 @@ Return ONLY the suggested response text.`;
       /* ── 5. Recommended rooms ── */
       case "recommend_rooms": {
         const { user_type, followed_categories, recent_rooms, all_rooms } = payload;
-        const roomList = all_rooms
-          .map((r: { id: string; title: string; category: string; status: string; participant_count: number }) =>
-            `[${r.id}] ${r.title} (${r.category}, ${r.status}, ${r.participant_count} listeners)`)
+        const roomList = (all_rooms as Array<{ id: string; title: string; category: string; status: string; participant_count: number }>)
+          .map(r => `[${r.id}] ${r.title} (${r.category}, ${r.status}, ${r.participant_count} listeners)`)
           .join("\n");
-        prompt = `You are recommending rooms on Dare, a community voice platform in Zimbabwe.
+        prompt = `You are recommending rooms on Dare, a community voice platform.
 
 User profile:
 - Type: ${user_type}
-- Followed categories: ${followed_categories.join(", ") || "none yet"}
-- Recently visited rooms: ${recent_rooms.join(", ") || "none"}
+- Followed categories: ${(followed_categories as string[]).join(", ") || "none yet"}
+- Recently visited rooms: ${(recent_rooms as string[]).join(", ") || "none"}
 
 Available rooms:
 ${roomList}
 
-Return ONLY valid JSON array of up to 4 room IDs in order of relevance:
+Return ONLY a valid JSON array of up to 4 room IDs in order of relevance (no markdown, no backticks):
 ["id1", "id2", "id3", "id4"]
 
 Prioritise: live rooms first, then category match, then diversity.`;
@@ -124,21 +139,11 @@ Prioritise: live rooms first, then category match, then diversity.`;
         return NextResponse.json({ error: "Unknown feature" }, { status: 400 });
     }
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = message.content
-      .filter(b => b.type === "text")
-      .map(b => (b as { type: "text"; text: string }).text)
-      .join("");
-
-    return NextResponse.json({ result: text.trim() });
+    const result = await generate(prompt, maxTokens);
+    return NextResponse.json({ result });
 
   } catch (err) {
-    console.error("AI route error:", err);
+    console.error("Gemini AI route error:", err);
     return NextResponse.json({ error: "AI request failed" }, { status: 500 });
   }
 }
