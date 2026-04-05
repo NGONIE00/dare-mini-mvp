@@ -21,6 +21,8 @@ type Room = {
   status: string;
   participant_count: number;
   is_featured: boolean;
+  is_recording: boolean;
+  host_id: string;
   profiles: { id: string; display_name: string } | null;
 };
 
