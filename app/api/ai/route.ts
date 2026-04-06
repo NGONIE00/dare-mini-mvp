@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 async function generate(prompt: string, maxTokens = 400): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not configured");
 
-  const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+  const ai = new GoogleGenAI({ apiKey: key });
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: prompt,
+    config: { maxOutputTokens: maxTokens, temperature: 0.7 },
   });
 
-  const result = await model.generateContent(prompt);
-  return result.response.text().trim();
+  return (response.text ?? "").trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -28,7 +28,7 @@ Title: "${title}"
 Category: ${category}
 Language: ${language}
 Requirements: warm tone, explain what listeners will learn, under 200 characters, no hashtags or emojis.
-Return ONLY the description text.`,
+Return ONLY the description text, nothing else.`,
         120
       );
     }
@@ -61,7 +61,7 @@ Message: "${message}"
 
 Only flag as unsafe for: explicit hate speech, direct threats of violence, sexual content, or personal contact info.
 Community debate, strong opinions, and local slang are fine.
-Return ONLY the JSON.`,
+Return ONLY the JSON object, nothing else.`,
         60
       );
     }
@@ -73,7 +73,7 @@ Return ONLY the JSON.`,
 Room: "${room_title}" (${category})
 Question: "${question}"
 Write a helpful 1-3 sentence response. Conversational, community-focused.
-Return ONLY the response text.`,
+Return ONLY the response text, nothing else.`,
         150
       );
     }
@@ -92,7 +92,7 @@ Followed categories: ${followed_categories.join(", ") || "none"}
 Recent rooms: ${recent_rooms.join(", ") || "none"}
 Available rooms:
 ${list}
-Return ONLY a JSON array of up to 4 room IDs, no markdown:
+Return ONLY a JSON array of up to 4 room IDs with no markdown or backticks:
 ["id1","id2"]
 Prioritise: live rooms first, then category match.`,
         100
