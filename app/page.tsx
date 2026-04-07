@@ -245,7 +245,7 @@ export default function Home() {
             {[
               { h: "Product", links: [{ l: "Browse rooms", fn: () => router.push("/rooms") }, { l: "Feature phone (*447#)", fn: () => router.push("/ussd") }, { l: "Impact metrics", fn: () => router.push("/analytics") }, { l: "Demo accounts", fn: () => router.push("/demo") }, { l: "Get started", fn: () => router.push("/register") }, { l: "Sign in", fn: () => router.push("/signin") }] },
               { h: "Company", links: [{ l: "About", fn: () => {} }, { l: "Contact", fn: () => {} }] },
-              { h: "Legal",   links: [{ l: "Privacy policy", fn: () => {} }, { l: "Terms of service", fn: () => {} }] },
+              { h: "Legal",   links: [{ l: "Privacy policy", fn: () => router.push("/privacy") }, { l: "Terms of service", fn: () => router.push("/terms") }] },
             ].map(col => (
               <div key={col.h}>
                 <div style={{ color: "var(--text2)", fontSize: "0.68rem", fontWeight: 700, marginBottom: "0.6rem", letterSpacing: "0.05em", textTransform: "uppercase", fontFamily: "sans-serif" }}>{col.h}</div>

@@ -333,6 +333,12 @@ export default function Register() {
                 <button onClick={() => router.push("/signin")} style={{ background: "none", border: "none", color: "#D97706", cursor: "pointer", fontFamily: "sans-serif", fontSize: "0.8rem", fontWeight: 600 }}>
                   Sign in
                 </button>
+              <p style={{ textAlign: "center" as const, fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif", marginTop: "0.75rem" }}>
+                By continuing, you agree to our{" "}
+                <button onClick={() => router.push("/terms")} style={{ background: "none", border: "none", color: "#D97706", cursor: "pointer", fontFamily: "sans-serif", fontSize: "0.72rem" }}>Terms of Service</button>
+                {" "}and{" "}
+                <button onClick={() => router.push("/privacy")} style={{ background: "none", border: "none", color: "#D97706", cursor: "pointer", fontFamily: "sans-serif", fontSize: "0.72rem" }}>Privacy Policy</button>.
+              </p>
               </p>
             </div>
           )}
