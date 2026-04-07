@@ -7,7 +7,7 @@ async function generate(prompt: string, maxTokens = 400): Promise<string> {
 
   const ai = new GoogleGenAI({ apiKey: key });
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash-lite",
     contents: prompt,
     config: { maxOutputTokens: maxTokens, temperature: 0.7 },
   });

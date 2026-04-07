@@ -69,10 +69,18 @@ export default function CreateRoom() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ feature: "room_description", payload: { title: title.trim(), category, language: languages[0] ?? "English" } }),
       });
-      const { result } = await res.json();
-      if (result) setDescription(result);
-    } catch { /* silent fail */ }
-    finally { setAiDescLoading(false); }
+      const data = await res.json();
+      if (data.result) {
+        setDescription(data.result);
+      } else if (data.error?.includes("429") || data.error?.includes("quota") || data.error?.includes("RESOURCE_EXHAUSTED")) {
+        // Quota hit — use a sensible template instead of showing an error
+        setDescription(`A community ${(category || "general").toLowerCase()} session on Dare. Join "${title.trim()}" to learn, connect, and engage with others on this topic.`);
+      } else {
+        console.error("AI description error:", data.error);
+      }
+    } catch (err) {
+      console.error("AI fetch error:", err);
+    } finally { setAiDescLoading(false); }
   };
 
   const handleSubmit = async () => {
