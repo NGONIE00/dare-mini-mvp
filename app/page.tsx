@@ -107,15 +107,20 @@ export default function Home() {
   return (
     <>
       {/* ── NAV ── */}
-      <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.9rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
+      <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.75rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
         <div style={{ cursor: "pointer" }} onClick={() => router.push("/")}>
           <div style={{ color: "#D97706", fontSize: "1rem", fontWeight: 700, lineHeight: 1.1 }}>DARE</div>
           <div style={{ color: "var(--text3)", fontSize: "0.68rem", fontFamily: "sans-serif" }}>The Digital Council</div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <ThemeToggle />
-          <button style={btnG} onClick={() => router.push("/signin")}>Sign in</button>
-          <button style={btnP} onClick={() => router.push("/register")}>Get started</button>
+          {/* Hide secondary links on mobile */}
+          <div style={{ display: "none" }} className="desktop-nav-links">
+            <button style={{ ...btnG, fontSize: "0.78rem", padding: "7px 12px" }} onClick={() => router.push("/ussd")}>*447#</button>
+            <button style={{ ...btnG, fontSize: "0.78rem", padding: "7px 12px" }} onClick={() => router.push("/analytics")}>Metrics</button>
+          </div>
+          <button style={{ ...btnG, fontSize: "0.78rem", padding: "7px 12px", whiteSpace: "nowrap" as const }} onClick={() => router.push("/signin")}>Sign in</button>
+          <button style={{ ...btnP, fontSize: "0.78rem", padding: "7px 12px", whiteSpace: "nowrap" as const }} onClick={() => router.push("/register")}>Get started</button>
         </div>
       </nav>
 

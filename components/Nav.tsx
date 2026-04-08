@@ -125,7 +125,7 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
   return (
     <>
       {/* ── NAV BAR ── */}
-      <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.9rem 2rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
+      <nav style={{ background: "var(--bg)", borderBottom: "1px solid var(--divider)", padding: "0.75rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, transition: "background 0.3s" }}>
 
         {/* Brand */}
         <div style={{ cursor: "pointer" }} onClick={() => router.push("/")}>
@@ -178,11 +178,9 @@ export function Nav({ showBack = false }: { showBack?: boolean }) {
 
           {/* Auth state */}
           {!userId ? (
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => router.push("/ussd")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>*447#</button>
-              <button onClick={() => router.push("/analytics")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>Metrics</button>
-              <button onClick={() => router.push("/signin")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 12px", fontSize: "0.8rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif" }}>Sign in</button>
-              <button onClick={() => router.push("/register")} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif" }}>Get started</button>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <button onClick={() => router.push("/signin")} style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 6, padding: "6px 11px", fontSize: "0.78rem", color: "var(--text2)", cursor: "pointer", fontFamily: "sans-serif", whiteSpace: "nowrap" as const }}>Sign in</button>
+              <button onClick={() => router.push("/register")} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 6, padding: "6px 11px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "sans-serif", whiteSpace: "nowrap" as const }}>Get started</button>
             </div>
           ) : (
             <div ref={menuRef} style={{ position: "relative" }}>
