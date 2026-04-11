@@ -39,12 +39,24 @@ export default function Rooms() {
       /* Sync room statuses first (scheduled→live, live→ended) */
       await supabase.rpc("sync_room_statuses");
 
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*, profiles(id, display_name)")
-        .in("status", ["scheduled", "live"])
-        .order("is_featured", { ascending: false })
-        .order("scheduled_at", { ascending: true });
+      // Fetch featured rooms regardless of status + active rooms
+      const [{ data: featuredData }, { data: activeData, error }] = await Promise.all([
+        supabase.from("rooms")
+          .select("*, profiles(id, display_name)")
+          .eq("is_featured", true),
+        supabase.from("rooms")
+          .select("*, profiles(id, display_name)")
+          .in("status", ["scheduled", "live"])
+          .eq("is_featured", false)
+          .order("scheduled_at", { ascending: true }),
+      ]);
+
+      // Merge: featured first, then active, deduplicate
+      const merged = [
+        ...(featuredData ?? []),
+        ...(activeData ?? []).filter(r => !featuredData?.find(f => f.id === r.id)),
+      ];
+      const data = merged;
 
       if (error) console.error("Rooms fetch error:", error.message, error.code);
       if (data) setRooms(data);
