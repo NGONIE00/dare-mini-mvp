@@ -118,6 +118,8 @@ export default function RoomPage() {
   const [ticketDone,   setTicketDone]   = useState(false);
   const [ending,        setEnding]        = useState(false);
   const [roomMenuOpen,  setRoomMenuOpen]  = useState(false);
+  const [shareOpen,    setShareOpen]    = useState(false);
+  const [linkCopied,   setLinkCopied]   = useState(false);
   const [editRoomOpen,  setEditRoomOpen]  = useState(false);
   const [deleteRoomOpen,setDeleteRoomOpen]= useState(false);
   const [editTitle,     setEditTitle]     = useState("");
@@ -418,6 +420,33 @@ export default function RoomPage() {
     finally { setAiLoading(false); }
   };
 
+  /* ── Share ── */
+  const roomUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/rooms/${roomId}`
+    : `https://dare-mini-mvp.vercel.app/rooms/${roomId}`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(roomUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      /* fallback: select the input */
+    }
+  };
+
+  const nativeShare = async () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      await navigator.share({
+        title: room?.title ?? "Dare room",
+        text: `Join "${room?.title}" on Dare — The Digital Council`,
+        url: roomUrl,
+      });
+    } else {
+      setShareOpen(true);
+    }
+  };
+
   /* ── Room management ── */
   const openEditRoom = () => {
     if (!room) return;
@@ -705,6 +734,11 @@ export default function RoomPage() {
           <button onClick={() => router.push("/rooms")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text2)", display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontFamily: "sans-serif", fontWeight: 500, flexShrink: 0, padding: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             Rooms
+          </button>
+          {/* Share button */}
+          <button onClick={nativeShare} title="Share room" style={{ background: "none", border: "0.5px solid var(--border2)", borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: "0.8rem", color: "var(--text2)", fontFamily: "sans-serif", flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
           </button>
           <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
             {isLive && (
@@ -1172,6 +1206,63 @@ export default function RoomPage() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── SHARE MODAL ── */}
+      {shareOpen && room && (
+        <div
+          onClick={e => { if ((e.target as HTMLElement).id === "share-bg") setShareOpen(false); }}
+          id="share-bg"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 0 }}
+        >
+          <div style={{ background: "var(--bg)", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, padding: "1.5rem 1.5rem 2.5rem" }}>
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border2)", margin: "0 auto 1.25rem" }} />
+
+            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text)", fontFamily: "sans-serif", marginBottom: "0.3rem" }}>Share this room</h3>
+            <p style={{ fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1.25rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{room.title}</p>
+
+            {/* QR Code */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.25rem" }}>
+              <div style={{ background: "#fff", padding: 12, borderRadius: 12, border: "0.5px solid var(--border)" }}>
+                {/* Free QR API — no key needed */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(roomUrl)}&format=png&margin=0&color=000000&bgcolor=ffffff`}
+                  alt="QR code"
+                  width={180}
+                  height={180}
+                  style={{ display: "block", borderRadius: 4 }}
+                />
+              </div>
+            </div>
+            <p style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--text3)", fontFamily: "sans-serif", marginBottom: "1.25rem" }}>Scan to join on any device</p>
+
+            {/* Copyable link */}
+            <div style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
+              <div style={{ flex: 1, background: "var(--bg2)", border: "0.5px solid var(--border2)", borderRadius: 8, padding: "10px 12px", fontSize: "0.78rem", color: "var(--text3)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                {roomUrl}
+              </div>
+              <button onClick={copyLink} style={{ background: linkCopied ? "rgba(5,150,105,0.1)" : "#D97706", color: linkCopied ? "#059669" : "#fff", border: linkCopied ? "0.5px solid rgba(5,150,105,0.3)" : "none", borderRadius: 8, padding: "10px 16px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", fontFamily: "sans-serif", flexShrink: 0, transition: "all 0.2s" }}>
+                {linkCopied ? "✓ Copied" : "Copy"}
+              </button>
+            </div>
+
+            {/* Share options */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {[
+                { label: "WhatsApp", color: "#25D366", href: `https://wa.me/?text=${encodeURIComponent(`Join "${room.title}" on Dare: ${roomUrl}`)}`, icon: "💬" },
+                { label: "Telegram", color: "#2AABEE", href: `https://t.me/share/url?url=${encodeURIComponent(roomUrl)}&text=${encodeURIComponent(`Join "${room.title}" on Dare`)}`, icon: "✈️" },
+                { label: "Download QR", color: "var(--text2)", href: `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(roomUrl)}&format=png&margin=10`, icon: "⬇️" },
+              ].map(opt => (
+                <a key={opt.label} href={opt.href} target="_blank" rel="noreferrer" download={opt.label === "Download QR" ? `dare-room-qr.png` : undefined}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 8px", background: "var(--bg2)", border: "0.5px solid var(--border)", borderRadius: 10, textDecoration: "none", cursor: "pointer" }}>
+                  <span style={{ fontSize: "1.3rem" }}>{opt.icon}</span>
+                  <span style={{ fontSize: "0.7rem", color: "var(--text2)", fontFamily: "sans-serif", fontWeight: 600 }}>{opt.label}</span>
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       )}
